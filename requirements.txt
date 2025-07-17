@@ -1,0 +1,6 @@
+stellar-sdk>=8.0.0
+requests>=2.25.0
+asyncio-throttle>=1.0.0
+websockets>=10.0
+cryptography>=3.4.0
+pycryptodome>=3.15.0
