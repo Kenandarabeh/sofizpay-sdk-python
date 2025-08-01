@@ -23,7 +23,7 @@ class SofizPayClient:
     CIB transactions, and signature verification.
     """
     
-    VERSION = "1.0.0"
+    VERSION = "1.0.2"
     
     SOFIZPAY_PUBLIC_KEY_PEM = """-----BEGIN PUBLIC KEY-----
 MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA1N+bDPxpqeB9QB0affr/
@@ -54,7 +54,7 @@ THV3WRcKrP2krz3ruRGF6yP6PVHEuPc0YDLsYjV5uhfs7JtIksNKhRRAQ16bAsj/
         memo: Optional[str] = None
     ) -> Dict[str, Any]:
         """
-        Send a payment on the Stellar network
+        Send a payment on Sofizpay
         
         Args:
             source_secret: Secret key of the source account
@@ -83,23 +83,24 @@ THV3WRcKrP2krz3ruRGF6yP6PVHEuPc0YDLsYjV5uhfs7JtIksNKhRRAQ16bAsj/
             memo=memo
         )
     
-    async def get_dzt_balance(self, public_key: str) -> float:
+    async def get_balance(self, public_key: str) -> float:
         """
-        Get DZT balance for an account
+        Get  balance for an account
         
         Args:
             public_key: Public key of the account
             
         Returns:
-            DZT balance as float
+             balance as float
             
         Example:
             ```python
             client = SofizPayClient()
-            balance = await client.get_dzt_balance("PUBLIC_KEY_HERE")
+            balance = await client.get_balance("PUBLIC_KEY_HERE")
             ```
         """
-        return await self.payment_manager.get_dzt_balance(public_key)
+        return await self.payment_manager.get_balance(public_key)
+    
     
     async def get_all_transactions(
         self,
@@ -107,7 +108,7 @@ THV3WRcKrP2krz3ruRGF6yP6PVHEuPc0YDLsYjV5uhfs7JtIksNKhRRAQ16bAsj/
         limit: int = 200
     ) -> List[Dict[str, Any]]:
         """
-        Get all transactions (not just DZT) for an account
+        Get all transactions (not just ) for an account
         
         Args:
             public_key: Public key of the account
@@ -143,29 +144,29 @@ THV3WRcKrP2krz3ruRGF6yP6PVHEuPc0YDLsYjV5uhfs7JtIksNKhRRAQ16bAsj/
         """
         return self.payment_manager.get_public_key_from_secret(secret_key)
     
-    async def get_dzt_transactions(
+    async def get_transactions(
         self,
         public_key: str,
         limit: int = 200
     ) -> List[Dict[str, Any]]:
         """
-        Get DZT transactions for an account
+        Get  transactions for an account
         
         Args:
             public_key: Public key of the account
             limit: Maximum number of transactions to retrieve
             
         Returns:
-            List of DZT transaction dictionaries
+            List of  transaction dictionaries
             
         Example:
             ```python
             client = SofizPayClient()
-            transactions = await client.get_dzt_transactions("PUBLIC_KEY_HERE", limit=50)
+            transactions = await client.get_transactions("PUBLIC_KEY_HERE", limit=50)
             for tx in transactions:
             ```
         """
-        return await self.transaction_manager.get_dzt_transactions(public_key, limit)
+        return await self.transaction_manager.get_transactions(public_key, limit)
     
     async def get_transaction_by_hash(self, transaction_hash: str) -> Dict[str, Any]:
         """
@@ -190,14 +191,18 @@ THV3WRcKrP2krz3ruRGF6yP6PVHEuPc0YDLsYjV5uhfs7JtIksNKhRRAQ16bAsj/
     async def setup_transaction_stream(
         self,
         public_key: str,
-        transaction_callback: Callable[[Dict[str, Any]], None]
+        transaction_callback: Callable[[Dict[str, Any]], None],
+        from_now: bool = True,
+        check_interval: int = 30
     ) -> str:
         """
-        Set up real-time transaction streaming for an account (only NEW transactions)
+        Set up real-time transaction streaming for an account 
         
         Args:
             public_key: Public key to monitor
             transaction_callback: Callback function to handle new transactions
+            from_now: If True, only new transactions will be streamed; if False, both new and historical transactions will be included
+            check_interval: Duration in seconds for repeated network checks (default 30 seconds)
             
         Returns:
             Stream ID for managing the stream
@@ -207,15 +212,26 @@ THV3WRcKrP2krz3ruRGF6yP6PVHEuPc0YDLsYjV5uhfs7JtIksNKhRRAQ16bAsj/
             client = SofizPayClient()
             
             def handle_transaction(transaction):
+                print("New transaction:", transaction)
             
+
             stream_id = await client.setup_transaction_stream(
                 "PUBLIC_KEY_HERE",
-                handle_transaction
+                handle_transaction,
+                from_now=True,
+                check_interval=10
+            )
+            
+            stream_id = await client.setup_transaction_stream(
+                "PUBLIC_KEY_HERE", 
+                handle_transaction,
+                from_now=False,
+                check_interval=60
             )
             ```
         """
         return await self.transaction_manager.setup_transaction_stream(
-            public_key, transaction_callback, cursor='now'  # Only new transactions
+            public_key, transaction_callback, from_now=from_now, check_interval=check_interval  
         )
     
     def stop_transaction_stream(self, stream_id: str) -> bool:
@@ -259,13 +275,10 @@ THV3WRcKrP2krz3ruRGF6yP6PVHEuPc0YDLsYjV5uhfs7JtIksNKhRRAQ16bAsj/
             ```
         """
         try:
-            # Decode the signature from base64
             decoded_signature = base64.b64decode(signature)
             
-            # Load the hardcoded SofizPay public key
             public_key_obj = serialization.load_pem_public_key(cls.SOFIZPAY_PUBLIC_KEY_PEM.encode())
             
-            # Verify the signature
             public_key_obj.verify(
                 decoded_signature,
                 message.encode(),
@@ -278,7 +291,7 @@ THV3WRcKrP2krz3ruRGF6yP6PVHEuPc0YDLsYjV5uhfs7JtIksNKhRRAQ16bAsj/
     
     async def make_cib_transaction(self, transaction_data: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Make a CIB (Customer Initiated Bank) transaction through SofizPay
+        Make a CIB transaction through SofizPay
         
         Args:
             transaction_data: Dictionary containing transaction details:
@@ -304,10 +317,10 @@ THV3WRcKrP2krz3ruRGF6yP6PVHEuPc0YDLsYjV5uhfs7JtIksNKhRRAQ16bAsj/
             result = await client.make_cib_transaction({
                 "account": "ACCOUNT_ID_HERE",
                 "amount": 100.50,
-                "full_name": "أحمد محمد",
+                "full_name": "CLIENT",
                 "phone": "+213123456789",
-                "email": "ahmed@example.com",
-                "memo": "دفع فاتورة",
+                "email": "CLIENT@example.com",
+                "memo": "Payment for services",
                 "return_url": "https://mysite.com/success"
             })
             
@@ -440,13 +453,7 @@ THV3WRcKrP2krz3ruRGF6yP6PVHEuPc0YDLsYjV5uhfs7JtIksNKhRRAQ16bAsj/
         Returns:
             True if signature is valid, False otherwise
             
-        Example:
-            ```python
-            client = SofizPayClient()
-            is_valid = client.verify_sofizpay_signature({
-                "message": "wc_order_LI3SLQ7xA7IY9cib84907success23400",
-                "signature_url_safe": "jHrONYl2NuBhjAYTgRq3xwRuW2ZYZIQlx1VWgiObu5F..."
-            })
+
             ```
         """
         if not verification_data.get('message'):

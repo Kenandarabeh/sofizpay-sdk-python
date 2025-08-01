@@ -153,3 +153,4 @@ secrets/
 *.temp
 temp/
 examples/
+scripts/

@@ -106,17 +106,7 @@ class PaymentManager:
             try:
                 response = self.server.submit_transaction(transaction)
                 
-                end_time = time.time()
-                duration = end_time - start_time
-                
-                return {
-                    "success": True,
-                    "hash": response["hash"],
-                    "duration": duration,
-                    "ledger": response.get("ledger"),
-                    "envelope_xdr": response.get("envelope_xdr"),
-                    "result_xdr": response.get("result_xdr")
-                }
+                return response  # إرجاع النتيجة مباشرة
                 
             except SdkError as e:
                 raise PaymentError(f"Transaction submission failed: {e}")
@@ -124,18 +114,8 @@ class PaymentManager:
         except (ValidationError, PaymentError):
             raise
         except Exception as e:
-            end_time = time.time()
-            duration = end_time - start_time
-            
-            # Extract detailed error information
             detailed_error = self._extract_error_details(e)
-            
-            return {
-                "success": False,
-                "error": detailed_error,
-                "duration": duration,
-                "raw_error": str(e)
-            }
+            raise PaymentError(detailed_error)
     
     def _extract_error_details(self, error: Exception) -> str:
         """Extract detailed error information from Stellar SDK error"""
@@ -166,15 +146,15 @@ class PaymentManager:
         
         return detailed_error
     
-    async def get_dzt_balance(self, public_key: str) -> float:
+    async def get_balance(self, public_key: str) -> float:
         """
-        Get DZT balance for an account
+        Get  balance for an account
         
         Args:
             public_key: Public key of the account
             
         Returns:
-            DZT balance as float
+             balance as float
             
         Raises:
             ValidationError: When public key is invalid
@@ -194,7 +174,7 @@ class PaymentManager:
             return 0.0  
             
         except Exception as e:
-            raise NetworkError(f"Error fetching DZT balance: {e}")
+            raise NetworkError(f"Error fetching  balance: {e}")
     
     def get_public_key_from_secret(self, secret_key: str) -> str:
         """

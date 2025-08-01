@@ -1,1237 +1,377 @@
-# SofizPay SDK for Python
-
 <div align="center">
-  <img src="https://github.com/kenandarabeh/sofizpay-sdk-python/blob/main/assets/sofizpay-logo.png?raw=true" alt="SofizPay Logo" width="200" height="200">
-  
-  <h3>🚀 A powerful Python SDK for Stellar blockchain payments</h3>
-  
-  [![PyPI Version](https://img.shields.io/pypi/v/sofizpay-sdk-python.svg)](https://pypi.org/project/sofizpay-sdk-python/)
-  [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-  [![GitHub Stars](https://img.shields.io/github/stars/sofizpay/sofizpay-sdk-python.svg)](https://github.com/sofizpay/sofizpay-sdk-python/stargazers)
-  [![Issues](https://img.shields.io/github/issues/sofizpay/sofizpay-sdk-python.svg)](https://github.com/sofizpay/sofizpay-sdk-python/issues)
-  [![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://python.org)
+  <img src="https://github.com/kenandarabeh/sofizpay-sdk/blob/main/assets/sofizpay-logo.png?raw=true" alt="SofizPay Logo" width="200" />
 </div>
 
----
+# SofizPay SDK Python
 
-## 📋 Table of Contents
+**The official Python SDK for secure digital payments and transactions.**
 
-- [Overview](#overview)
-- [Features](#features)
-- [Installation](#installation)
-- [Quick Start](#quick-start)
-- [API Reference](#api-reference)
-- [Usage Examples](#usage-examples)
-- [Real-time Transaction Monitoring](#real-time-transaction-monitoring)
-- [CIB Transactions](#cib-transactions)
-- [Signature Verification](#signature-verification)
-- [Error Handling](#error-handling)
-- [Best Practices](#best-practices)
-- [Contributing](#contributing)
-- [Support](#support)
-- [License](#license)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
----
+## Quick Start
 
-## 🌟 Overview
-
-SofizPay SDK is a powerful Python library for Stellar blockchain payments with real-time transaction monitoring, comprehensive payment management, and signature verification capabilities.
-
-**Key Benefits:**
-- 🔐 Secure Stellar blockchain integration
-- ⚡ Real-time transaction monitoring with async support
-- 🎯 Simple, intuitive API with type hints
-- 📱 Cross-platform Python support (3.8+)
-- 🔒 Built-in signature verification
-- 🏦 CIB transaction support
-
----
-
-## ✨ Features
-
-- ✅ **Send Payments**: Secure token transfers with memo support
-- ✅ **Transaction History**: Retrieve and filter transaction records  
-- ✅ **Balance Checking**: Real-time balance queries
-- ✅ **Transaction Search**: Find transactions by hash with detailed info
-- ✅ **Real-time Streams**: Live transaction monitoring with async callbacks
-- ✅ **CIB Transactions**: Create CIB bank transactions for deposits
-- ✅ **Signature Verification**: Verify SofizPay signatures and custom signatures
-- ✅ **Error Handling**: Robust async error management and reporting
-- ✅ **Rate Limiting**: Built-in API rate limiting protection
-- ✅ **Type Safety**: Full type hints for better development experience
-
----
-
-## 📦 Installation
-
-Install SofizPay SDK using pip:
+### Installation
 
 ```bash
 pip install sofizpay-sdk-python
 ```
 
-For development with all dependencies:
-
-```bash
-pip install sofizpay-sdk-python[dev]
-```
-
-### Requirements
-
-- Python 3.8+
-- stellar-sdk
-- cryptography
-- requests
-
----
-
-## 🚀 Quick Start
-
-### 1. Import the SDK
+### Basic Usage
 
 ```python
+from sofizpay.client import SofizPayClient
 import asyncio
-from sofizpay import SofizPayClient
-```
 
-### 2. Initialize the Client
-
-```python
-# Initialize with default Stellar mainnet
-client = SofizPayClient()
-```
-
-### 3. Your First Payment
-
-```python
-async def send_payment():
+async def main():
     client = SofizPayClient()
-    
     result = await client.send_payment(
-        source_secret="YOUR_SECRET_KEY",
-        destination_public_key="DESTINATION_PUBLIC_KEY",
-        amount="10.50",
-        memo="Payment for services"
+        source_secret='YOUR_SECRET_KEY',
+        destination_public_key='RECIPIENT_PUBLIC_KEY',
+        amount='100',
+        memo='Payment description'
     )
-    
-    if result["success"]:
-        print(f'Payment successful! TX: {result["hash"]}')
-    else:
-        print(f'Payment failed: {result["error"]}')
+    print('Payment sent!' if result.get('success') else result.get('error'))
 
-# Run the async function
-asyncio.run(send_payment())
+asyncio.run(main())
 ```
 
----
+## Features
 
-## 📚 API Reference
+- ✅ **Send Secure Payments** - Instant digital transactions
+- ✅ **Get Account Balance** - Real-time balance checking
+- ✅ **Transaction History** - Complete transaction records
+- ✅ **Search & Filter** - Find transactions by memo or hash
+- ✅ **Real-time Streaming** - Live transaction notifications with flexible options
+- ✅ **Multi-platform** - Works everywhere (Linux, Windows, Mac)
+- ✅ **Flexible Monitoring** - Stream from now or with full history, customizable intervals
 
-### Core Payment Operations
+## Usage Examples
 
-#### `send_payment()` - Send Payment
+### Basic Payment
 ```python
-result = await client.send_payment(
-    source_secret="SECRET_KEY",
-    destination_public_key="DESTINATION_PUBLIC_KEY", 
-    amount="10.50",
-    memo="Payment memo"  # Optional
-)
-```
-
-#### `get_balance()` - Check Balance
-```python
-balance = await client.get_dzt_balance("PUBLIC_KEY")
-print(f'Balance: {balance}')
-```
-
-#### `get_all_transactions()` - Get Transactions
-```python
-transactions = await client.get_all_transactions("PUBLIC_KEY", limit=50)
-for tx in transactions:
-    print(f'TX: {tx["hash"]} - Amount: {tx["amount"]}')
-```
-
-### Transaction Monitoring
-
-#### `setup_transaction_stream()` - Real-time Monitoring
-```python
-def handle_transaction(transaction):
-    print(f'New {transaction["type"]}: {transaction["amount"]}')
-
-stream_id = await client.setup_transaction_stream("PUBLIC_KEY", handle_transaction)
-```
-
-#### `stop_transaction_stream()` - Stop Monitoring
-```python
-success = client.stop_transaction_stream(stream_id)
-```
-
-#### `get_transaction_by_hash()` - Get Transaction Details
-```python
-result = await client.get_transaction_by_hash("TRANSACTION_HASH")
-if result["found"]:
-    tx = result["transaction"]
-    print(f'Amount: {tx["amount"]}')
-```
-
-### CIB Transactions
-
-#### `make_cib_transaction()` - Create CIB Transaction
-```python
-result = await client.make_cib_transaction({
-    "account": "ACCOUNT_NUMBER",
-    "amount": 100.50,
-    "full_name": "John Doe",
-    "phone": "+1234567890",
-    "email": "john@example.com",
-    "memo": "Payment for order",
-    "return_url": "https://your-site.com/callback"
-})
-```
-
-### Signature Verification
-
-#### `verify_signature()` - Verify Custom Signature
-```python
-is_valid = client.verify_signature(
-    message="Hello, world!",
-    signature="BASE64_SIGNATURE",
-)
-```
-
-#### `verify_sofizpay_signature()` - Verify SofizPay Signature
-```python
-is_valid = client.verify_sofizpay_signature({
-    "message": "wc_order_123success",
-    "signature_url_safe": "URL_SAFE_BASE64_SIGNATURE"
-})
-```
-
-### Utility Methods
-
-#### `get_public_key_from_secret()` - Extract Public Key
-```python
-public_key = client.get_public_key_from_secret("SECRET_KEY")
-```
-
----
-
-## 🔄 Real-time Transaction Monitoring
-
-### Basic Monitoring Setup
-
-```python
+from sofizpay.client import SofizPayClient
 import asyncio
-from sofizpay import SofizPayClient
 
-async def monitor_transactions():
+async def main():
     client = SofizPayClient()
-    
-    def transaction_handler(transaction):
-        print(f'🎉 NEW TRANSACTION!')
-        print(f'   Type: {transaction["type"]}')
-        print(f'   Amount: {transaction["amount"]}')
-        print(f'   From: {transaction["from"]}')
-        print(f'   To: {transaction["to"]}')
-        print(f'   Memo: {transaction["memo"]}')
-        print(f'   Time: {transaction["created_at"]}')
-        
-        # Process the transaction
-        if transaction["type"] == "received":
-            handle_incoming_payment(transaction)
-    
-    # Start monitoring (only NEW transactions after this point)
+    result = await client.send_payment(
+        source_secret='YOUR_SECRET_KEY',
+        destination_public_key='RECIPIENT_PUBLIC_KEY',
+        amount='50',
+        memo='Web payment'
+    )
+    print(result)
+
+asyncio.run(main())
+```
+
+### Get Balance
+```python
+from sofizpay.client import SofizPayClient
+import asyncio
+
+async def main():
+    client = SofizPayClient()
+    balance = await client.get_balance('YOUR_PUBLIC_KEY')
+    print('Current balance:', balance)
+
+asyncio.run(main())
+```
+
+### Transaction Streaming
+```python
+from sofizpay.client import SofizPayClient
+import asyncio
+
+async def main():
+    client = SofizPayClient()
+    async def handle_transaction(tx):
+        print('New transaction:', tx)
     stream_id = await client.setup_transaction_stream(
-        "YOUR_PUBLIC_KEY", 
-        transaction_handler
+        'YOUR_PUBLIC_KEY',
+        handle_transaction,
+        from_now=True,
+        check_interval=30
     )
-    
-    print(f"📡 Monitoring started with stream ID: {stream_id}")
-    
-    # Keep monitoring for 60 seconds
-    await asyncio.sleep(60)
-    
-    # Stop monitoring
-    stopped = client.stop_transaction_stream(stream_id)
-    print(f"🛑 Monitoring stopped: {stopped}")
-
-def handle_incoming_payment(transaction):
-    """Process incoming payments"""
-    amount = float(transaction["amount"])
-    if amount >= 10.0:
-        print(f"✅ Large payment received: {amount}")
-        # Process large payment...
-    else:
-        print(f"💰 Small payment received: {amount}")
-
-# Run monitoring
-asyncio.run(monitor_transactions())
-```
-
-### Advanced Monitoring with Error Handling
-
-```python
-class PaymentMonitor:
-    def __init__(self):
-        self.client = SofizPayClient()
-        self.active_streams = {}
-    
-    async def start_monitoring(self, public_key: str):
-        """Start monitoring with error handling"""
-        try:
-            stream_id = await self.client.setup_transaction_stream(
-                public_key, 
-                self._handle_transaction
-            )
-            self.active_streams[public_key] = stream_id
-            print(f"✅ Started monitoring for {public_key}")
-            return stream_id
-        except Exception as e:
-            print(f"❌ Failed to start monitoring: {e}")
-            return None
-    
-    def _handle_transaction(self, transaction):
-        """Handle incoming transactions"""
-        try:
-            print(f"📩 New transaction: {transaction['amount']}")
-            # Your business logic here
-        except Exception as e:
-            print(f"❌ Error processing transaction: {e}")
-    
-    def stop_monitoring(self, public_key: str):
-        """Stop monitoring for a specific key"""
-        if public_key in self.active_streams:
-            stream_id = self.active_streams[public_key]
-            success = self.client.stop_transaction_stream(stream_id)
-            del self.active_streams[public_key]
-            return success
-        return False
-    
-    async def __aenter__(self):
-        return self
-    
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
-        # Stop all active streams
-        for public_key in list(self.active_streams.keys()):
-            self.stop_monitoring(public_key)
-```
-
----
-
-## 🏦 CIB Transactions
-
-### Basic CIB Transaction
-
-```python
-async def create_cib_transaction():
-    client = SofizPayClient()
-    
-    transaction_data = {
-        "account": "DZ1234567890123456789012",
-        "amount": 150.75,
-        "full_name": "Ahmed Mohammed",
-        "phone": "+213555123456",
-        "email": "ahmed@example.com",
-        "memo": "Payment for order #12345",
-        "return_url": "https://mystore.com/payment/success"
-    }
-    
-    try:
-        result = await client.make_cib_transaction(transaction_data)
-        
-        if result["success"]:
-            print("✅ CIB Transaction created successfully!")
-            print(f"Response: {result['data']}")
-            print(f"Status: {result['status']}")
-        else:
-            print(f"❌ CIB Transaction failed: {result['error']}")
-            
-    except Exception as e:
-        print(f"❌ Unexpected error: {e}")
-
-asyncio.run(create_cib_transaction())
-```
-
-### CIB Transaction with Full Error Handling
-
-```python
-from sofizpay.exceptions import ValidationError, NetworkError
-
-class CIBPaymentProcessor:
-    def __init__(self):
-        self.client = SofizPayClient()
-    
-    async def process_payment(self, 
-                            account: str,
-                            amount: float,
-                            customer_name: str,
-                            phone: str,
-                            email: str,
-                            memo: str = None,
-                            return_url: str = None):
-        """Process a CIB payment with comprehensive error handling"""
-        
-        # Validate inputs
-        if not account or len(account) < 20:
-            raise ValidationError("Invalid account number")
-        
-        if amount <= 0:
-            raise ValidationError("Amount must be positive")
-        
-        transaction_data = {
-            "account": account,
-            "amount": amount,
-            "full_name": customer_name,
-            "phone": phone,
-            "email": email,
-            "memo": memo or f"Payment from {customer_name}",
-            "return_url": return_url
-        }
-        
-        try:
-            result = await self.client.make_cib_transaction(transaction_data)
-            
-            if result["success"]:
-                return {
-                    "success": True,
-                    "transaction_id": result.get("data", {}).get("id"),
-                    "status": result["status"],
-                    "created_at": result["timestamp"]
-                }
-            else:
-                return {
-                    "success": False,
-                    "error": result["error"],
-                    "status_code": result.get("status_code")
-                }
-                
-        except ValidationError as e:
-            print(f"❌ Validation error: {e}")
-            raise
-        except NetworkError as e:
-            print(f"❌ Network error: {e}")
-            raise
-        except Exception as e:
-            print(f"❌ Unexpected error: {e}")
-            raise
-
-# Usage
-async def main():
-    processor = CIBPaymentProcessor()
-    
-    try:
-        result = await processor.process_payment(
-            account="DZ1234567890123456789012",
-            amount=250.00,
-            customer_name="Sarah Ahmed",
-            phone="+213777888999",
-            email="sarah@example.com",
-            memo="Subscription payment",
-            return_url="https://myapp.com/success"
-        )
-        
-        if result["success"]:
-            print(f"✅ Payment processed: {result['transaction_id']}")
-        else:
-            print(f"❌ Payment failed: {result['error']}")
-            
-    except Exception as e:
-        print(f"❌ Error: {e}")
+    await asyncio.sleep(120)
+    client.stop_transaction_stream(stream_id)
 
 asyncio.run(main())
 ```
 
----
+## API Reference
 
-## 🔐 Signature Verification
+### Core Methods
 
-### Verify SofizPay Signatures
+| Method | Description | Example |
+|--------|-------------|---------|
+| `send_payment(...)` | Send secure payment | `await client.send_payment(...)` |
+| `get_balance(public_key)` | Get account balance | `await client.get_balance('GXXX...')` |
+| `get_transactions(public_key, limit)` | Get transaction history | `await client.get_transactions('GXXX...', 50)` |
+| `get_transaction_by_hash(hash)` | Find transaction by hash | `await client.get_transaction_by_hash('abc123...')` |
+| `search_transactions_by_memo(public_key, memo, limit)` | Search by memo | `await client.search_transactions_by_memo('GXXX...', 'payment', 50)` |
+| `get_public_key_from_secret(secret_key)` | Get public key from secret key | `client.get_public_key_from_secret('SXXX...')` |
+| `setup_transaction_stream(public_key, callback, from_now, check_interval)` | Start real-time monitoring | `await client.setup_transaction_stream('GXXX...', callback, True, 30)` |
+| `stop_transaction_stream(stream_id)` | Stop real-time monitoring | `client.stop_transaction_stream(stream_id)` |
+| `make_cib_transaction(transaction_data)` | Create bank transaction | `await client.make_cib_transaction({...})` |
+| `verify_sofizpay_signature(verification_data)` | Verify digital signature | `client.verify_sofizpay_signature({...})` |
+
+### Bank Transaction Parameters
 
 ```python
-def verify_payment_callback(message: str, signature: str) -> bool:
-    """Verify a payment callback from SofizPay"""
-    client = SofizPayClient()
-    
-    verification_data = {
-        "message": message,
-        "signature_url_safe": signature
-    }
-    
-    is_valid = client.verify_sofizpay_signature(verification_data)
-    
-    if is_valid:
-        print("✅ Signature verified - payment is authentic")
-        return True
+transaction_data = {
+    'account': 'string',          # User account public key
+    'amount': 100,               # Transaction amount (must be > 0)
+    'full_name': 'string',       # Customer full name
+    'phone': 'string',           # Customer phone number
+    'email': 'string',           # Customer email address
+    # Optional
+    'memo': 'string',            # Transaction description/memo
+    'return_url': 'string',      # URL to redirect after payment
+    'redirect': True             # Whether to redirect automatically
+}
+```
+
+### Signature Verification Parameters
+
+```python
+verification_data = {
+    'message': 'string',              # Original message to verify
+    'signature_url_safe': 'string'    # Base64URL-encoded signature
+}
+```
+
+### Advanced Features
+
+```python
+# Get public key from secret key
+public_key = client.get_public_key_from_secret('YOUR_SECRET_KEY')
+print('Public key:', public_key)
+
+# Real-time transaction monitoring - New transactions only
+async def handle_new(tx):
+    print('New transaction received:', tx)
+await client.setup_transaction_stream('YOUR_PUBLIC_KEY', handle_new, True, 30)
+
+# Real-time monitoring with full history first
+async def handle_all(tx):
+    if tx.get('isHistorical'):
+        print('Historical transaction:', tx)
     else:
-        print("❌ Invalid signature - potential fraud")
-        return False
+        print('New transaction received:', tx)
+await client.setup_transaction_stream('YOUR_PUBLIC_KEY', handle_all, False, 15)
 
-# Example usage
-message = "wc_order_LI3SLQ7xA7IY9cib84907success23400"
-signature = "jHrONYl2NuBhjAYTgRq3xwRuW2ZYZIQlx1VWgiObu5F..."
+# Stop monitoring
+client.stop_transaction_stream(stream_id)
 
-if verify_payment_callback(message, signature):
-    # Process the verified payment
-    process_confirmed_payment(message)
+# Search transactions by memo with custom limit
+results = await client.search_transactions_by_memo('YOUR_PUBLIC_KEY', 'payment', 100)
+if results:
+    print('Found transactions:', results)
+
+# Get specific transaction by hash
+transaction = await client.get_transaction_by_hash('TRANSACTION_HASH_HERE')
+print('Transaction details:', transaction)
 ```
 
-### Custom Signature Verification
+### Utility Functions
 
 ```python
-def verify_custom_signature(message: str, signature: str, public_key_pem: str) -> bool:
-    """Verify a signature with custom public key"""
-    client = SofizPayClient()
-    
-    return client.verify_signature(
-        message=message,
-        signature=signature,
-        public_key=public_key_pem
-    )
+# Convert secret key to public key
+public_key = client.get_public_key_from_secret('SXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX')
+print('Derived public key:', public_key)
 
-# Example
-custom_public_key = """-----BEGIN PUBLIC KEY-----
-MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...
------END PUBLIC KEY-----"""
+# Get complete transaction history with custom limit
+all_transactions = await client.get_transactions('YOUR_PUBLIC_KEY', 200)
+print(f'Found {len(all_transactions)} transactions')
+for tx in all_transactions:
+    print(f"{tx['type']}: {tx['amount']} - {tx['memo']} ({tx['created_at']})")
 
-is_valid = verify_custom_signature("Hello World", "signature_here", custom_public_key)
+# Search for specific payments by memo
+order_payments = await client.search_transactions_by_memo('YOUR_PUBLIC_KEY', 'Order #12345', 10)
+if order_payments:
+    print('Found order payments:', order_payments)
+else:
+    print('No payments found for this order')
 ```
 
----
-
-## 💡 Usage Examples
-
-### Complete Payment System
+### Bank Integration
 
 ```python
-import asyncio
-from typing import Optional
-from sofizpay import SofizPayClient
-from sofizpay.exceptions import SofizPayError
+bank_result = await client.make_cib_transaction({
+    'account': 'YOUR_PUBLIC_KEY',
+    'amount': 150,
+    'full_name': 'Ahmed',
+    'phone': '+213*********',
+    'email': 'ahmed@sofizpay.com',
+    'memo': 'Payment',
+    'return_url': 'https://yoursite.com/payment-success',
+    'redirect': True
+})
 
-class PaymentSystem:
-    def __init__(self, secret_key: str):
-        self.client = SofizPayClient()
-        self.secret_key = secret_key
-        self.public_key = self.client.get_public_key_from_secret(secret_key)
-    
-    async def check_balance(self) -> float:
-        """Check current balance"""
-        try:
-            balance = await self.client.get_dzt_balance(self.public_key)
-            print(f"💰 Current balance: {balance}")
-            return balance
-        except SofizPayError as e:
-            print(f"❌ Error checking balance: {e}")
-            return 0.0
-    
-    async def send_payment(self, 
-                          destination: str, 
-                          amount: str, 
-                          memo: Optional[str] = None) -> bool:
-        """Send a payment"""
-        try:
-            # Check balance first
-            balance = await self.check_balance()
-            if balance < float(amount):
-                print(f"❌ Insufficient balance: {balance} < {amount}")
-                return False
-            
-            # Send payment
-            result = await self.client.send_payment(
-                source_secret=self.secret_key,
-                destination_public_key=destination,
-                amount=amount,
-                memo=memo
-            )
-            
-            if result["success"]:
-                print(f"✅ Payment sent successfully!")
-                print(f"   Hash: {result['hash']}")
-                print(f"   Amount: {amount}")
-                print(f"   To: {destination}")
-                return True
-            else:
-                print(f"❌ Payment failed: {result['error']}")
-                return False
-                
-        except SofizPayError as e:
-            print(f"❌ Payment error: {e}")
-            return False
-    
-    async def get_transaction_history(self, limit: int = 20):
-        """Get recent transactions"""
-        try:
-            transactions = await self.client.get_all_transactions(
-                self.public_key, 
-                limit=limit
-            )
-            
-            print(f"📊 Found {len(transactions)} transactions:")
-            for i, tx in enumerate(transactions[:10], 1):
-                print(f"   {i}. {tx['type'].upper()}: {tx['amount']}")
-                print(f"      Hash: {tx['hash'][:16]}...")
-                print(f"      Date: {tx['created_at']}")
-                print(f"      Memo: {tx['memo'] or 'No memo'}")
-                print()
-            
-            return transactions
-            
-        except SofizPayError as e:
-            print(f"❌ Error fetching transactions: {e}")
-            return []
-    
-    async def start_monitoring(self):
-        """Start real-time transaction monitoring"""
-        def handle_transaction(transaction):
-            amount = transaction["amount"]
-            tx_type = transaction["type"]
-            memo = transaction["memo"]
-            
-            print(f"🚨 NEW TRANSACTION DETECTED!")
-            print(f"   Type: {tx_type.upper()}")
-            print(f"   Amount: {amount}")
-            print(f"   Memo: {memo or 'No memo'}")
-            print(f"   Time: {transaction['created_at']}")
-            
-            # Auto-process received payments
-            if tx_type == "received":
-                self._process_received_payment(transaction)
-        
-        try:
-            stream_id = await self.client.setup_transaction_stream(
-                self.public_key,
-                handle_transaction
-            )
-            print(f"📡 Started monitoring transactions...")
-            return stream_id
-            
-        except SofizPayError as e:
-            print(f"❌ Error starting monitoring: {e}")
-            return None
-    
-    def _process_received_payment(self, transaction):
-        """Process incoming payments"""
-        amount = float(transaction["amount"])
-        memo = transaction["memo"]
-        
-        if memo and "order_" in memo:
-            print(f"🛒 Processing order payment: {amount}")
-            # Process order...
-        elif amount >= 100.0:
-            print(f"💎 Large payment received: {amount}")
-            # Handle large payment...
-        else:
-            print(f"💰 Regular payment received: {amount}")
-
-# Usage example
-async def main():
-    # Initialize payment system
-    payment_system = PaymentSystem("YOUR_SECRET_KEY")
-    
-    # Check balance
-    await payment_system.check_balance()
-    
-    # Get transaction history
-    await payment_system.get_transaction_history(limit=10)
-    
-    # Send a payment
-    await payment_system.send_payment(
-        destination="DESTINATION_PUBLIC_KEY",
-        amount="5.0",
-        memo="Test payment"
-    )
-    
-    # Start monitoring (runs indefinitely)
-    stream_id = await payment_system.start_monitoring()
-    
-    # Keep monitoring for 30 seconds
-    if stream_id:
-        await asyncio.sleep(30)
-        payment_system.client.stop_transaction_stream(stream_id)
-        print("🛑 Monitoring stopped")
-
-# Run the example
-asyncio.run(main())
+if bank_result.get('success'):
+    print('Bank transaction created:', bank_result.get('url'))
+else:
+    print('Bank transaction failed:', bank_result.get('error'))
 ```
 
-### E-commerce Integration Example
+### Real-time Streaming Options
+
+The `setup_transaction_stream` method accepts these parameters:
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `public_key` | `str` | - | **Required**. Account public key to monitor |
+| `callback` | `function` | - | **Required**. Function called for each transaction |
+| `from_now` | `bool` | `True` | `True`: Only new transactions, `False`: Load history then monitor |
+| `check_interval` | `int` | `30` | Reconnection interval in seconds (5-300) |
 
 ```python
-from sofizpay import SofizPayClient
-from dataclasses import dataclass
-from typing import Dict, Any
-import asyncio
+# Example: Load last 200 transactions then monitor new ones
+await client.setup_transaction_stream(
+    'GXXX...', 
+    lambda tx: print(tx), 
+    False,  # Load historical transactions first
+    10      # Check every 10 seconds
+)
 
-@dataclass
-class Order:
-    id: str
-    amount: float
-    customer_email: str
-    description: str
-    status: str = "pending"
-
-class EcommercePaymentGateway:
-    def __init__(self, merchant_secret_key: str):
-        self.client = SofizPayClient()
-        self.merchant_secret = merchant_secret_key
-        self.merchant_public = self.client.get_public_key_from_secret(merchant_secret_key)
-        self.pending_orders: Dict[str, Order] = {}
-    
-    async def create_payment_request(self, order: Order) -> Dict[str, Any]:
-        """Create a payment request for an order"""
-        # Store order
-        self.pending_orders[order.id] = order
-        
-        # Start monitoring for this specific payment
-        await self._start_order_monitoring()
-        
-        return {
-            "order_id": order.id,
-            "payment_address": self.merchant_public,
-            "amount": order.amount,
-            "currency": "TOKEN",
-            "memo": f"order_{order.id}",
-            "instructions": f"Send exactly {order.amount} to {self.merchant_public} with memo 'order_{order.id}'"
-        }
-    
-    async def _start_order_monitoring(self):
-        """Monitor for incoming payments"""
-        def payment_handler(transaction):
-            memo = transaction.get("memo", "")
-            if memo.startswith("order_"):
-                order_id = memo.replace("order_", "")
-                self._process_order_payment(order_id, transaction)
-        
-        stream_id = await self.client.setup_transaction_stream(
-            self.merchant_public,
-            payment_handler
-        )
-        return stream_id
-    
-    def _process_order_payment(self, order_id: str, transaction: Dict[str, Any]):
-        """Process payment for a specific order"""
-        if order_id not in self.pending_orders:
-            print(f"❌ Unknown order ID: {order_id}")
-            return
-        
-        order = self.pending_orders[order_id]
-        paid_amount = float(transaction["amount"])
-        
-        if paid_amount >= order.amount:
-            order.status = "paid"
-            print(f"✅ Order {order_id} paid successfully!")
-            print(f"   Amount: {paid_amount}")
-            print(f"   Customer: {order.customer_email}")
-            
-            # Send confirmation email, fulfill order, etc.
-            self._fulfill_order(order)
-        else:
-            print(f"⚠️ Underpayment for order {order_id}")
-            print(f"   Expected: {order.amount}")
-            print(f"   Received: {paid_amount}")
-    
-    def _fulfill_order(self, order: Order):
-        """Fulfill the paid order"""
-        print(f"📦 Fulfilling order {order.id}: {order.description}")
-        # Implement order fulfillment logic
-        del self.pending_orders[order.id]
-
-# Usage
-async def ecommerce_example():
-    gateway = EcommercePaymentGateway("MERCHANT_SECRET_KEY")
-    
-    # Create an order
-    order = Order(
-        id="ORD-12345",
-        amount=25.50,
-        customer_email="customer@example.com",
-        description="Premium Subscription"
-    )
-    
-    # Create payment request
-    payment_info = await gateway.create_payment_request(order)
-    print("💳 Payment request created:")
-    print(f"   Order ID: {payment_info['order_id']}")
-    print(f"   Amount: {payment_info['amount']} {payment_info['currency']}")
-    print(f"   Address: {payment_info['payment_address']}")
-    print(f"   Memo: {payment_info['memo']}")
-    
-    # Keep monitoring for payments
-    print("📡 Monitoring for payments...")
-    await asyncio.sleep(60)  # Monitor for 1 minute
-
-asyncio.run(ecommerce_example())
-```
-
----
-
-## ⚠️ Error Handling
-
-### Custom Exception Types
-
-```python
-from sofizpay.exceptions import (
-    SofizPayError,           # Base exception
-    PaymentError,            # Payment-specific errors  
-    TransactionError,        # Transaction-specific errors
-    NetworkError,           # Network-related errors
-    ValidationError,        # Input validation errors
-    RateLimitError,         # Rate limiting errors
-    InsufficientBalanceError, # Insufficient balance
-    InvalidAccountError,    # Invalid account errors
-    InvalidAssetError       # Invalid asset errors
+# Example: Monitor only new transactions with custom interval
+await client.setup_transaction_stream(
+    'GXXX...', 
+    lambda tx: print('Live transaction:', tx), 
+    True,   # From now only
+    60      # Check every minute
 )
 ```
 
-### Comprehensive Error Handling
+### Digital Signature Verification
 
 ```python
-async def robust_payment_handler():
-    client = SofizPayClient()
-    
-    try:
-        result = await client.send_payment(
-            source_secret="SECRET_KEY",
-            destination_public_key="DEST_KEY",
-            amount="10.0",
-            memo="Test payment"
-        )
-        
-        if result["success"]:
-            print(f"✅ Payment successful: {result['hash']}")
-        else:
-            print(f"❌ Payment failed: {result['error']}")
-            
-    except ValidationError as e:
-        print(f"❌ Validation error: {e}")
-        # Handle validation errors (invalid keys, amounts, etc.)
-        
-    except InsufficientBalanceError as e:
-        print(f"❌ Insufficient balance: {e}")
-        # Handle insufficient balance
-        
-    except NetworkError as e:
-        print(f"❌ Network error: {e}")
-        # Handle network issues, retry logic
-        
-    except RateLimitError as e:
-        print(f"❌ Rate limit exceeded: {e}")
-        # Handle rate limiting, implement backoff
-        
-    except PaymentError as e:
-        print(f"❌ Payment error: {e}")
-        # Handle general payment errors
-        
-    except SofizPayError as e:
-        print(f"❌ SofizPay error: {e}")
-        # Handle any SofizPay-related error
-        
-    except Exception as e:
-        print(f"❌ Unexpected error: {e}")
-        # Handle unexpected errors
+# Verify digital signature 
+is_valid = client.verify_sofizpay_signature({
+    'message': 'wc_order_LI3SLQ7xA7IY9cib84907success23400',
+    'signature_url_safe': 'jHrONYl2NuBhjAYTgRq3xwRuW2ZYZIQlx1VWgiObu5FrSnY78pQ...'
+})
+
+if is_valid:
+    print('Signature is valid - proceed with order')
+else:
+    print('Invalid signature - reject request')
 ```
 
-### Async Context Manager
+## Response Format
+
+All methods return a consistent response format:
 
 ```python
-async def safe_payment_operations():
-    """Use async context manager for automatic cleanup"""
-    async with SofizPayClient() as client:
-        # All operations here
-        balance = await client.get_dzt_balance("PUBLIC_KEY")
-        
-        if balance > 10.0:
-            result = await client.send_payment(
-                source_secret="SECRET_KEY",
-                destination_public_key="DEST_KEY", 
-                amount="5.0"
-            )
-            print(f"Payment result: {result}")
-    
-    # Client automatically cleaned up
-    print("✅ Operations completed and cleaned up")
+# Success
+{
+  'success': True,
+  # ... method-specific data
+  'timestamp': "2025-07-28T10:30:00.000Z"
+}
 
-asyncio.run(safe_payment_operations())
+# Error
+{
+  'success': False,
+  'error': "Error description",
+  'timestamp': "2025-07-28T10:30:00.000Z"
+}
 ```
 
----
+## Configuration
 
-## 🏆 Best Practices
+The SDK is pre-configured for secure digital transactions:
 
-### Security Best Practices
+- **Network**: Mainnet
+- **Security**: Enterprise-grade encryption
+- **Performance**: Optimized for high-throughput operations
+
+## Security Best Practices
+
+⚠️ **Important Security Notes:**
+
+- Never expose secret keys in client-side code
+- Use environment variables for sensitive data
+- Always test on test environment first
+- Validate all inputs before sending transactions
 
 ```python
+# ✅ Good - Environment variable
 import os
-from cryptography.fernet import Fernet
+secret_key = os.getenv('SECRET_KEY')
 
-class SecureConfig:
-    """Secure configuration management"""
-    
-    @staticmethod
-    def get_secret_key() -> str:
-        """Get secret key from environment or secure storage"""
-        # ✅ Use environment variables
-        secret_key = os.getenv('SOFIZPAY_SECRET_KEY')
-        if not secret_key:
-            raise ValueError("SOFIZPAY_SECRET_KEY not found in environment")
-        return secret_key
-    
-    @staticmethod
-    def encrypt_sensitive_data(data: str, key: bytes) -> str:
-        """Encrypt sensitive data"""
-        f = Fernet(key)
-        encrypted = f.encrypt(data.encode())
-        return encrypted.decode()
-
-# ✅ Production usage
-async def production_payment():
-    # Get secret from secure environment
-    secret_key = SecureConfig.get_secret_key()
-    
-    client = SofizPayClient()
-    
-    # Validate before processing using utils
-    from sofizpay.utils import validate_secret_key
-    if not validate_secret_key(secret_key):
-        raise ValueError("Invalid secret key")
-    
-    # Process payment with error handling
-    try:
-        result = await client.send_payment(
-            source_secret=secret_key,
-            destination_public_key="DEST_KEY",
-            amount="10.0"
-        )
-        return result
-    finally:
-        # Always cleanup
-        del secret_key
+# ❌ Bad - Hardcoded in code
+secret_key = 'SXXXXXXXXXXXXX...'
 ```
 
-### Performance Best Practices
+## Transaction Flow
 
+```mermaid
+graph TD
+    A[Initialize SDK] --> B[Authenticate]
+    B --> C{Transaction Type}
+    C -->|Payment| D[Submit Payment]
+    C -->|Query| E[Get Balance/History]
+    C -->|Stream| F[Monitor Real-time]
+    D --> G[Payment Processing]
+    E --> H[Return Data]
+    F --> I[Live Updates]
+    G --> J[Success/Error Response]
+```
+
+## Examples Repository
+
+Find complete examples at: [github.com/kenandarabeh/sofizpay-sdk-python/examples](https://github.com/kenandarabeh/sofizpay-sdk-python/tree/main/examples)
+
+## Support
+
+- 📚 **Documentation**: [Full API Docs](https://github.com/kenandarabeh/sofizpay-sdk-python#readme)
+- 🐛 **Issues**: [Report Bug](https://github.com/kenandarabeh/sofizpay-sdk-python/issues)
+- 💬 **Discussions**: [Community Help](https://github.com/kenandarabeh/sofizpay-sdk-python/discussions)
+- 🌐 **Website**: [SofizPay.com](https://sofizpay.com)
+
+## Use Cases
+
+### E-commerce Integration
+Perfect for online stores needing secure payment processing:
 ```python
-class OptimizedPaymentManager:
-    def __init__(self):
-        # ✅ Reuse client instance
-        self.client = SofizPayClient()
-        self._balance_cache = {}
-        self._cache_ttl = 30  # 30 seconds
-    
-    async def get_cached_balance(self, public_key: str) -> float:
-        """Get balance with caching"""
-        import time
-        now = time.time()
-        
-        if public_key in self._balance_cache:
-            balance, timestamp = self._balance_cache[public_key]
-            if now - timestamp < self._cache_ttl:
-                return balance
-        
-        # Fetch fresh balance
-        balance = await self.client.get_dzt_balance(public_key)
-        self._balance_cache[public_key] = (balance, now)
-        return balance
-    
-    async def batch_payments(self, payments: list) -> list:
-        """Process multiple payments efficiently"""
-        results = []
-        
-        # ✅ Use asyncio.gather for concurrent processing
-        tasks = [
-            self.client.send_payment(**payment) 
-            for payment in payments
-        ]
-        
-        results = await asyncio.gather(*tasks, return_exceptions=True)
-        return results
-    
-    async def __aenter__(self):
-        return self
-    
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
-        # ✅ Cleanup resources
-        self._balance_cache.clear()
+# Process customer payment
+result = await client.send_payment(
+  source_secret=os.getenv('STORE_SECRET_KEY'),
+  destination_public_key=customer_key,
+  amount=order_total,
+  memo=f"Order #{order_id}"
+)
 ```
 
-### Validation Best Practices
-
+### Financial Applications
+Built for fintech apps requiring real-time transaction monitoring:
 ```python
-from typing import Union
-import re
-
-class PaymentValidator:
-    """Input validation utilities"""
-    
-    @staticmethod
-    def validate_amount(amount: Union[str, float]) -> bool:
-        """Validate payment amount"""
-        try:
-            amount_float = float(amount)
-            return (
-                amount_float > 0 and 
-                amount_float <= 922337203685.4775807 and  # Stellar limit
-                len(str(amount).split('.')[-1]) <= 7  # Max 7 decimal places
-            )
-        except (ValueError, TypeError):
-            return False
-    
-    @staticmethod  
-    def validate_memo(memo: str) -> bool:
-        """Validate memo field"""
-        if not memo:
-            return True
-        return len(memo.encode('utf-8')) <= 28  # Stellar memo limit
-    
-    @staticmethod
-    def validate_email(email: str) -> bool:
-        """Validate email format"""
-        pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-        return bool(re.match(pattern, email))
-    
-    @staticmethod
-    def sanitize_memo(memo: str) -> str:
-        """Sanitize memo text"""
-        if not memo:
-            return ""
-        
-        # Remove control characters
-        sanitized = ''.join(char for char in memo if ord(char) >= 32)
-        
-        # Truncate if too long
-        if len(sanitized.encode('utf-8')) > 28:
-            sanitized = sanitized[:28]
-        
-        return sanitized
-
-# ✅ Usage
-validator = PaymentValidator()
-
-# Validate before sending
-if not validator.validate_amount("10.5"):
-    raise ValueError("Invalid amount")
-
-if not validator.validate_memo("Payment memo"):
-    raise ValueError("Invalid memo")
-
-# Sanitize inputs
-clean_memo = validator.sanitize_memo(user_input_memo)
+# Monitor account activity
+await client.setup_transaction_stream(user_key, lambda tx: print(tx), True, 30)
 ```
 
-### Development Best Practices
-
+### Enterprise Solutions
+Scalable for high-volume business operations:
 ```python
-# ✅ Type hints for better IDE support
-from typing import Dict, List, Optional, Union, Callable
-import logging
-
-# ✅ Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-class PaymentApp:
-    def __init__(self, secret_key: str):
-        # ✅ Use mainnet for production
-        self.client = SofizPayClient()
-        self.secret_key = secret_key
-        
-        # ✅ Log configuration
-        logger.info(f"Initialized with mainnet")
-    
-    async def send_payment_with_retry(self, 
-                                    destination: str, 
-                                    amount: str,
-                                    max_retries: int = 3) -> Dict:
-        """Send payment with retry logic"""
-        last_error = None
-        
-        for attempt in range(max_retries):
-            try:
-                logger.info(f"Payment attempt {attempt + 1}/{max_retries}")
-                
-                result = await self.client.send_payment(
-                    source_secret=self.secret_key,
-                    destination_public_key=destination,
-                    amount=amount
-                )
-                
-                if result["success"]:
-                    logger.info(f"Payment successful: {result['hash']}")
-                    return result
-                else:
-                    logger.warning(f"Payment failed: {result['error']}")
-                    last_error = result["error"]
-                    
-            except Exception as e:
-                logger.error(f"Payment attempt {attempt + 1} failed: {e}")
-                last_error = str(e)
-                
-                if attempt < max_retries - 1:
-                    await asyncio.sleep(2 ** attempt)  # Exponential backoff
-        
-        return {"success": False, "error": f"All {max_retries} attempts failed. Last error: {last_error}"}
-
-# ✅ Production usage
-async def production_example():
-    app = PaymentApp(os.getenv('SOFIZPAY_SECRET_KEY'))
-    
-    result = await app.send_payment_with_retry(
-        destination="DESTINATION_PUBLIC_KEY",
-        amount="1.0"
-    )
-    
-    print(f"Result: {result}")
-
-asyncio.run(production_example())
+# Batch processing
+results = await asyncio.gather(*[
+  client.send_payment(**payment) for payment in payments
+])
 ```
+
+## Performance
+
+- **Speed**: Sub-second transaction processing
+- **Reliability**: 99.9% uptime guarantee
+- **Scalability**: Handles thousands of transactions per second
+- **Global**: Worldwide transaction support
+
+## License
+
+MIT © [SofizPay Team](https://github.com/kenandarabeh)
 
 ---
 
-## 🤝 Contributing
-
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
-
-### Development Setup
-
-```bash
-# Clone the repository
-git clone https://github.com/sofizpay/sofizpay-sdk-python.git
-cd sofizpay-sdk-python
-
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install dependencies
-pip install -r requirements.txt
-pip install -r requirements-dev.txt
-
-# Run tests
-python -m pytest tests/ -v
-
-# Run linting
-flake8 sofizpay/
-mypy sofizpay/
-
-# Run formatting
-black sofizpay/
-isort sofizpay/
-```
-
-### Contributing Process
-
-1. **Fork** the repository
-2. **Create** feature branch: `git checkout -b feature/amazing-feature`
-3. **Make** your changes with tests
-4. **Run** tests and linting: `pytest && flake8`
-5. **Commit** changes: `git commit -m 'Add amazing feature'`
-6. **Push** to branch: `git push origin feature/amazing-feature`
-7. **Open** a Pull Request
-
-### Code Standards
-
-- ✅ Follow PEP 8 style guidelines
-- ✅ Add type hints to all functions
-- ✅ Write comprehensive docstrings
-- ✅ Include unit tests for new features
-- ✅ Maintain backwards compatibility
-- ✅ Update documentation
-
----
-
-## 📞 Support
-
-- 📖 [Documentation](https://github.com/sofizpay/sofizpay-sdk-python#readme)
-- 🐛 [Report Issues](https://github.com/sofizpay/sofizpay-sdk-python/issues)
-- 💬 [Discussions](https://github.com/sofizpay/sofizpay-sdk-python/discussions)
-- ⭐ [Star the Project](https://github.com/sofizpay/sofizpay-sdk-python)
-- 📧 [Email Support](mailto:support@sofizpay.com)
-
-### Frequently Asked Questions
-
-**Q: How do I handle rate limiting?**
-```python
-# The SDK has built-in rate limiting, but you can add custom retry logic
-from sofizpay.exceptions import RateLimitError
-import asyncio
-
-try:
-    result = await client.send_payment(...)
-except RateLimitError:
-    await asyncio.sleep(60)  # Wait 1 minute
-    result = await client.send_payment(...)  # Retry
-```
-
-**Q: Is the SDK thread-safe?**
-```python
-# Yes, but create separate client instances for different threads
-import threading
-
-def worker_thread():
-    client = SofizPayClient()  # Create new instance
-    # Use client in this thread...
-```
-
----
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-```
-MIT License
-
-Copyright (c) 2025 SofizPay
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-```
-
----
-
-## 🙏 Acknowledgments
-
-- Built on the robust [Stellar Network](https://stellar.org)
-- Powered by [stellar-sdk](https://pypi.org/project/stellar-sdk/)
-- Inspired by the growing DeFi ecosystem
-- Special thanks to all contributors and the open-source community
-
-### Technical Dependencies
-
-- **stellar-sdk**: Stellar blockchain integration
-- **cryptography**: Signature verification and encryption
-- **requests**: HTTP client for API calls
-- **asyncio**: Asynchronous programming support
-
----
-
-<div align="center">
-  <p><strong>Made with ❤️ by the SofizPay Team</strong></p>
-  <p>
-    <a href="https://github.com/sofizpay/sofizpay-sdk-python">GitHub</a> •
-    <a href="https://pypi.org/project/sofizpay-sdk-python/">PyPI</a> •
-    <a href="https://github.com/sofizpay/sofizpay-sdk-python/issues">Support</a> •
-    <a href="mailto:support@sofizpay.com">Contact</a>
-  </p>
-  
-  <p>
-    <img src="https://img.shields.io/badge/Python-3.8+-blue.svg" alt="Python">
-    <img src="https://img.shields.io/badge/Stellar-Blockchain-brightgreen.svg" alt="Stellar">
-  </p>
-</div>
+**Built with ❤️ for Sofizpay**
