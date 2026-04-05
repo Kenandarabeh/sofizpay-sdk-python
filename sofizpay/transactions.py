@@ -1,6 +1,7 @@
 """Transaction management and streaming for SofizPay SDK"""
 
 import asyncio
+import requests
 from datetime import datetime, timezone
 from typing import Dict, Any, List, Optional, Callable
 from stellar_sdk import Server
@@ -25,6 +26,11 @@ class TransactionManager:
         self.server = Server(horizon_url=server_url)
         self.rate_limiter = RateLimiter(max_calls=10, time_window=1)
         self._streaming_tasks = {}
+        self.session = requests.Session()
+        self.session.headers.update({
+            'User-Agent': 'SofizPay SDK/Python',
+            'Accept': 'application/json'
+        })
     
     async def setup_transaction_stream(
         self,
@@ -66,7 +72,7 @@ class TransactionManager:
                             'id': tx.get('hash') or tx.get('id'),
                             'transactionId': tx.get('hash') or tx.get('id'),
                             'hash': tx.get('hash') or tx.get('id'),
-                            'amount': float(tx.get('amount', 0)),
+                            'amount': str(tx.get('amount', '0')),
                             'memo': tx.get('memo', ''),
                             'type': tx.get('type', 'unknown'),
                             'from': tx.get('from', ''),
@@ -142,7 +148,7 @@ class TransactionManager:
                         'id': transaction_data.get('hash'),
                         'transactionId': transaction_data.get('hash'),
                         'hash': transaction_data.get('hash'),
-                        'amount': float(operation.get('amount', 0)),
+                        'amount': str(operation.get('amount', '0')),
                         'memo': memo,
                         'type': transaction_type,
                         'from': operation.get('from', ''),
@@ -251,68 +257,99 @@ class TransactionManager:
     async def get_transactions(
         self,
         public_key: str,
-        limit: int = 200
+        limit: Optional[int] = None
     ) -> List[Dict[str, Any]]:
         """
-        Get  transactions for an account
+        Get comprehensive transactions for an account (Optimized & Complete)
         
         Args:
             public_key: Public key of the account
-            limit: Maximum number of transactions to retrieve
-            
-        Returns:
-            List of  transaction dictionaries
-            
-        Raises:
-            ValidationError: When public key is invalid
-            NetworkError: When unable to fetch transactions
+            limit: Maximum number of transactions (fetch all if None)
         """
         if not validate_public_key(public_key):
             raise ValidationError("Invalid public key")
         
+        page_size = 200 if limit is None or limit > 200 else limit
+        dzt_transactions = []
+        cursor = ""
+        has_more = True
+        
         try:
-            transactions_response = (self.server.transactions()
-                                   .for_account(public_key)
-                                   .order('desc')
-                                   .limit(limit)
-                                   .call())
-            
-            dzt_transactions = []
-            
-            for tx in transactions_response.get('_embedded', {}).get('records', []):
-                try:
-                    operations_response = (self.server.operations()
-                                         .for_transaction(tx['id'])
-                                         .call())
+            while has_more:
+                # Use /operations instead of /payments for 100% coverage
+                url = f"{self.server.horizon_url}/accounts/{public_key}/operations?limit={page_size}&order=desc&join=transactions"
+                if cursor:
+                    url += f"&cursor={cursor}"
+                
+                data = await fetch_with_retry(url, session=self.session)
+                records = data.get('_embedded', {}).get('records', [])
+                
+                if not records:
+                    break
+                
+                for op in records:
+                    tx_detail = op.get('transaction', {})
                     
-                    for op in operations_response.get('_embedded', {}).get('records', []):
-                        if (op.get('type') == 'payment' and
-                            op.get('asset_code') == self.ASSET_CODE and
-                            op.get('asset_issuer') == self.ASSET_ISSUER):
-                            
-                            transaction_type = 'sent' if op.get('from') == public_key else 'received'
-                            
-                            dzt_transactions.append({
-                                'id': tx['id'],
-                                'hash': tx['hash'],
-                                'created_at': tx['created_at'],
-                                'memo': tx.get('memo', ''),
-                                'amount': op.get('amount'),
-                                'from': op.get('from'),
-                                'to': op.get('to'),
-                                'type': transaction_type,
-                                'asset_code': op.get('asset_code'),
-                                'asset_issuer': op.get('asset_issuer'),
-                                'successful': tx.get('successful', False)
-                            })
-                            
-                except Exception as op_error:
-                    continue
+                    tx_data = {
+                        'id': op.get('transaction_hash'),
+                        'hash': op.get('transaction_hash'),
+                        'created_at': op.get('created_at'),
+                        'memo': tx_detail.get('memo', ''),
+                        'successful': tx_detail.get('successful', True),
+                        'paging_token': op.get('paging_token')
+                    }
+
+                    # 1. Handle Payments (Direct & Path)
+                    is_payment = op.get('type') in ['payment', 'path_payment_strict_receive', 'path_payment_strict_send']
+                    if is_payment and op.get('asset_code') == self.ASSET_CODE and op.get('asset_issuer') == self.ASSET_ISSUER:
+                        tx_data.update({
+                            'type': 'sent' if op.get('from') == public_key else 'received',
+                            'amount': str(op.get('amount', '0')),
+                            'from': op.get('from'),
+                            'to': op.get('to') or op.get('destination', ''),
+                            'asset_code': op.get('asset_code'),
+                            'asset_issuer': op.get('asset_issuer'),
+                            'category': 'payment'
+                        })
+                        dzt_transactions.append(tx_data)
+                    
+                    # 2. Handle Trustline (DZT)
+                    elif op.get('type') == 'change_trust' and op.get('asset_code') == self.ASSET_CODE and op.get('asset_issuer') == self.ASSET_ISSUER:
+                        tx_data.update({
+                            'type': 'trustline',
+                            'category': 'setup',
+                            'asset_code': op.get('asset_code'),
+                            'amount': '0'
+                        })
+                        dzt_transactions.append(tx_data)
+                    
+                    # 3. Handle Account Creation
+                    elif op.get('type') == 'create_account' and op.get('account') == public_key:
+                        tx_data.update({
+                            'type': 'account_created',
+                            'category': 'setup',
+                            'amount': str(op.get('starting_balance', '0')),
+                            'from': op.get('funder'),
+                            'asset_code': 'XLM'
+                        })
+                        dzt_transactions.append(tx_data)
+                        
+                    if limit and len(dzt_transactions) >= limit:
+                        has_more = False
+                        break
+                
+                if not has_more:
+                    break
+                    
+                if len(records) < page_size:
+                    has_more = False
+                else:
+                    cursor = records[-1].get('paging_token')
             
             return dzt_transactions
             
         except Exception as e:
-            raise NetworkError(f"Error fetching  transactions: {e}")
+            raise NetworkError(f"Error fetching transactions: {e}")
     
     async def get_transaction_by_hash(self, transaction_hash: str) -> Dict[str, Any]:
         """

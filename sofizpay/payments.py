@@ -1,6 +1,7 @@
 """Payment management for SofizPay SDK"""
 
 import time
+from datetime import datetime
 from typing import Optional, Dict, Any
 from stellar_sdk import (
     Server, Keypair, Asset, TransactionBuilder, 
@@ -106,7 +107,16 @@ class PaymentManager:
             try:
                 response = self.server.submit_transaction(transaction)
                 
-                return response  # إرجاع النتيجة مباشرة
+                return {
+                    "success": True,
+                    "transaction_id": response.get("hash"),
+                    "transaction_hash": response.get("hash"),
+                    "amount": amount,
+                    "memo": memo,
+                    "destination_public_key": destination_public_key,
+                    "duration": time.time() - start_time,
+                    "timestamp": datetime.now().isoformat()
+                }
                 
             except SdkError as e:
                 raise PaymentError(f"Transaction submission failed: {e}")

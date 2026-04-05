@@ -54,7 +54,7 @@ THV3WRcKrP2krz3ruRGF6yP6PVHEuPc0YDLsYjV5uhfs7JtIksNKhRRAQ16bAsj/
         memo: Optional[str] = None
     ) -> Dict[str, Any]:
         """
-        Send a payment on Sofizpay
+        Send a payment on Sofizpay (يعمل مثل JavaScript تماماً)
         
         Args:
             source_secret: Secret key of the source account
@@ -64,26 +64,50 @@ THV3WRcKrP2krz3ruRGF6yP6PVHEuPc0YDLsYjV5uhfs7JtIksNKhRRAQ16bAsj/
             
         Returns:
             Dictionary with transaction result
-            
-        Example:
-            ```python
-            client = SofizPayClient()
-            result = await client.send_payment(
-                source_secret="SECRET_KEY_HERE",
-                destination_public_key="DEST_PUBLIC_KEY_HERE",
-                amount="10.50",
-                memo="Payment for services"
-            )
-            ```
         """
-        return await self.payment_manager.send_payment(
-            source_secret=source_secret,
-            destination_public_key=destination_public_key,
-            amount=amount,
-            memo=memo
+        try:
+            result = await self.payment_manager.send_payment(
+                source_secret=source_secret,
+                destination_public_key=destination_public_key,
+                amount=amount,
+                memo=memo
+            )
+            
+            if result.get('success'):
+                # Align return structure with JS SDK
+                return {
+                    'success': True,
+                    'transactionId': result.get('hash'),
+                    'transactionHash': result.get('hash'),
+                    'amount': float(amount),
+                    'memo': memo,
+                    'destinationPublicKey': destination_public_key,
+                    'duration': result.get('duration'),
+                    'timestamp': datetime.now().isoformat()
+                }
+            else:
+                return {
+                    'success': False,
+                    'error': result.get('error', 'Transaction failed'),
+                    'timestamp': datetime.now().isoformat()
+                }
+        except Exception as e:
+            return {
+                'success': False,
+                'error': str(e),
+                'timestamp': datetime.now().isoformat()
+            }
+
+    async def submit(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Alias for send_payment to match JS SDK nomenclature"""
+        return await self.send_payment(
+            source_secret=data.get('secretkey'),
+            destination_public_key=data.get('destinationPublicKey'),
+            amount=str(data.get('amount')),
+            memo=data.get('memo')
         )
     
-    async def get_balance(self, public_key: str) -> float:
+    async def get_balance(self, public_key: str) -> Dict[str, Any]:
         """
         Get  balance for an account
         
@@ -91,40 +115,75 @@ THV3WRcKrP2krz3ruRGF6yP6PVHEuPc0YDLsYjV5uhfs7JtIksNKhRRAQ16bAsj/
             public_key: Public key of the account
             
         Returns:
-             balance as float
-            
-        Example:
-            ```python
-            client = SofizPayClient()
-            balance = await client.get_balance("PUBLIC_KEY_HERE")
-            ```
+             balance dictionary (aligned with JS SDK)
         """
-        return await self.payment_manager.get_balance(public_key)
+        try:
+            balance = await self.payment_manager.get_balance(public_key)
+            return {
+                'success': True,
+                'balance': balance,
+                'publicKey': public_key,
+                'asset_code': 'DZT',
+                'asset_issuer': 'GCAZI7YBLIDJWIVEL7ETNAZGPP3LC24NO6KAOBWZHUERXQ7M5BC52DLV',
+                'timestamp': datetime.now().isoformat()
+            }
+        except Exception as e:
+            return {
+                'success': False,
+                'error': str(e),
+                'balance': 0,
+                'publicKey': public_key,
+                'timestamp': datetime.now().isoformat()
+            }
     
     
-    async def get_all_transactions(
+    async def search_transactions_by_memo(
         self,
         public_key: str,
-        limit: int = 200
-    ) -> List[Dict[str, Any]]:
+        memo: str,
+        limit: int = 50
+    ) -> Dict[str, Any]:
         """
-        Get all transactions (not just ) for an account
+        Search transactions by memo content (aligned with JS SDK)
         
         Args:
             public_key: Public key of the account
-            limit: Maximum number of transactions to retrieve
+            memo: Text to search for in memo
+            limit: Maximum number of transactions to return
             
         Returns:
-            List of all transaction dictionaries
-            
-        Example:
-            ```python
-            client = SofizPayClient()
-            transactions = await client.get_all_transactions("PUBLIC_KEY_HERE", limit=50)
-            for tx in transactions:
-            ```
+            Standard result object with filtered transactions
         """
-        return await self.transaction_manager.get_all_transactions(public_key, limit)
+        try:
+            # First fetch a larger set to search within
+            raw_transactions = await self.transaction_manager.get_all_transactions(public_key, limit=200)
+            
+            # Filter by memo
+            filtered = [
+                tx for tx in raw_transactions 
+                if memo.lower() in tx.get('memo', '').lower()
+            ]
+            
+            # Apply limit
+            limited = filtered[:limit]
+            
+            return {
+                'success': True,
+                'transactions': limited,
+                'total': len(limited),
+                'totalFound': len(filtered),
+                'searchMemo': memo,
+                'publicKey': public_key,
+                'message': f'Found {len(filtered)} transactions containing "{memo}"',
+                'timestamp': datetime.now().isoformat()
+            }
+        except Exception as e:
+            return {
+                'success': False,
+                'error': str(e),
+                'transactions': [],
+                'timestamp': datetime.now().isoformat()
+            }
     
     def get_public_key_from_secret(self, secret_key: str) -> str:
         """
@@ -148,25 +207,34 @@ THV3WRcKrP2krz3ruRGF6yP6PVHEuPc0YDLsYjV5uhfs7JtIksNKhRRAQ16bAsj/
         self,
         public_key: str,
         limit: int = 200
-    ) -> List[Dict[str, Any]]:
+    ) -> Dict[str, Any]:
         """
-        Get  transactions for an account
+        Get transactions for an account
         
         Args:
             public_key: Public key of the account
             limit: Maximum number of transactions to retrieve
             
         Returns:
-            List of  transaction dictionaries
-            
-        Example:
-            ```python
-            client = SofizPayClient()
-            transactions = await client.get_transactions("PUBLIC_KEY_HERE", limit=50)
-            for tx in transactions:
-            ```
+            Standard result object with filtered transactions
         """
-        return await self.transaction_manager.get_transactions(public_key, limit)
+        try:
+            transactions = await self.transaction_manager.get_transactions(public_key, limit)
+            return {
+                'success': True,
+                'transactions': transactions,
+                'total': len(transactions),
+                'publicKey': public_key,
+                'message': f'Fetched DZT transactions ({len(transactions)})',
+                'timestamp': datetime.now().isoformat()
+            }
+        except Exception as e:
+            return {
+                'success': False,
+                'error': str(e),
+                'transactions': [],
+                'timestamp': datetime.now().isoformat()
+            }
     
     async def get_transaction_by_hash(self, transaction_hash: str) -> Dict[str, Any]:
         """
@@ -488,6 +556,128 @@ THV3WRcKrP2krz3ruRGF6yP6PVHEuPc0YDLsYjV5uhfs7JtIksNKhRRAQ16bAsj/
             return False
         except Exception as e:
             return False
+
+    async def recharge_phone(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Phone recharge service
+        Args:
+            data: {encrypted_sk, phone, operator, amount, offer}
+        """
+        return await self._perform_service_operation(data)
+
+    async def recharge_internet(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Internet recharge service
+        Args:
+            data: {encrypted_sk, phone, operator, amount, offer}
+        """
+        return await self._perform_service_operation(data)
+
+    async def recharge_game(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Game recharge service
+        Args:
+            data: {encrypted_sk, operator, playerId, amount, offer}
+        """
+        return await self._perform_service_operation(data)
+
+    async def pay_bill(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Bill payment service
+        Args:
+            data: {encrypted_sk, operator, ...utility_fields}
+        """
+        return await self._perform_service_operation(data)
+
+    async def _perform_service_operation(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Internal helper for service operations"""
+        try:
+            response = requests.post(
+                'https://www.sofizpay.com/services/operation_post',
+                json=data,
+                headers={'Content-Type': 'application/json'},
+                timeout=30
+            )
+            response.raise_for_status()
+            return {
+                'success': True,
+                'data': response.json() if response.headers.get('content-type', '').startswith('application/json') else response.text,
+                'timestamp': datetime.now().isoformat()
+            }
+        except Exception as e:
+            return {
+                'success': False,
+                'error': str(e),
+                'timestamp': datetime.now().isoformat()
+            }
+
+    async def get_operation_details(self, operation_id: str, encrypted_sk: str) -> Dict[str, Any]:
+        """Get details of a specific operation"""
+        try:
+            response = requests.get(
+                f'https://www.sofizpay.com/operation-details/{operation_id}/',
+                params={'encrypted_sk': encrypted_sk},
+                timeout=30
+            )
+            response.raise_for_status()
+            return {
+                'success': True,
+                'data': response.json() if response.headers.get('content-type', '').startswith('application/json') else response.text,
+                'timestamp': datetime.now().isoformat()
+            }
+        except Exception as e:
+            return {'success': False, 'error': str(e), 'timestamp': datetime.now().isoformat()}
+
+    async def get_operation_history(self, encrypted_sk: str, limit: int = 10, offset: int = 0) -> Dict[str, Any]:
+        """Get operation history"""
+        try:
+            response = requests.get(
+                'https://sofizpay.com/services/operation-history/',
+                params={'encrypted_sk': encrypted_sk, 'limit': limit, 'offset': offset},
+                timeout=30
+            )
+            response.raise_for_status()
+            return {
+                'success': True,
+                'data': response.json() if response.headers.get('content-type', '').startswith('application/json') else response.text,
+                'timestamp': datetime.now().isoformat()
+            }
+        except Exception as e:
+            return {'success': False, 'error': str(e), 'timestamp': datetime.now().isoformat()}
+
+    async def get_products(self, encrypted_sk: str = None) -> Dict[str, Any]:
+        """Get available products/services"""
+        try:
+            response = requests.get(
+                'https://sofizpay.com/services/get_products/',
+                json={'encrypted_sk': encrypted_sk} if encrypted_sk else {},
+                timeout=30
+            )
+            response.raise_for_status()
+            return {
+                'success': True,
+                'data': response.json() if response.headers.get('content-type', '').startswith('application/json') else response.text,
+                'timestamp': datetime.now().isoformat()
+            }
+        except Exception as e:
+            return {'success': False, 'error': str(e), 'timestamp': datetime.now().isoformat()}
+
+    async def check_cib_status(self, cib_transaction_id: str) -> Dict[str, Any]:
+        """Check status of a CIB transaction (Sandbox/Prod)"""
+        try:
+            response = requests.get(
+                'https://www.sofizpay.com/cib-transaction-check/',
+                params={'order_number': cib_transaction_id},
+                timeout=30
+            )
+            response.raise_for_status()
+            return {
+                'success': True,
+                'data': response.json() if response.headers.get('content-type', '').startswith('application/json') else response.text,
+                'timestamp': datetime.now().isoformat()
+            }
+        except Exception as e:
+            return {'success': False, 'error': str(e), 'timestamp': datetime.now().isoformat()}
 
     async def __aenter__(self):
         """Async context manager entry"""

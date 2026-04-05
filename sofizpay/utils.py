@@ -20,40 +20,38 @@ async def fetch_with_retry(
     session: Optional[requests.Session] = None
 ) -> dict:
     """
-    Fetch data from URL with retry logic for rate limiting
+    Fetch data from URL with retry logic for rate limiting and network stability
     
     Args:
         url: The URL to fetch
         retries: Number of retry attempts
         delay: Delay between retries in milliseconds
-        session: Optional requests session to use
-        
-    Returns:
-        Response data as dictionary
-        
-    Raises:
-        NetworkError: When all retries are exhausted
+        session: Optional requests session to use (recommended for pooling)
     """
     if session is None:
         session = requests.Session()
     
     for i in range(retries):
         try:
-            response = session.get(url)
+            # Set a reasonable timeout for Horizon
+            response = session.get(url, timeout=15)
             response.raise_for_status()
             return response.json()
         except requests.exceptions.HTTPError as e:
             if e.response.status_code == 429 and i < retries - 1:
-                await sleep(delay)
-                delay *= 2  # Exponential backoff
-            else:
-                raise NetworkError(f"HTTP error: {e}")
-        except requests.exceptions.RequestException as e:
-            if i < retries - 1:
+                print(f"[RateLimit] Retrying {url}... ({i + 1}/{retries})")
                 await sleep(delay)
                 delay *= 2
             else:
-                raise NetworkError(f"Request error: {e}")
+                raise NetworkError(f"HTTP error: {e}")
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
+            if i < retries - 1:
+                print(f"[Network] Connection issue, retrying... ({i + 1}/{retries})")
+                await sleep(delay)
+            else:
+                raise NetworkError(f"Network error: {e}")
+        except requests.exceptions.RequestException as e:
+            raise NetworkError(f"Request error: {e}")
     
     raise NetworkError(f"Failed to fetch {url} after {retries} retries")
 
