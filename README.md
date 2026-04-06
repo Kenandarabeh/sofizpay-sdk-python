@@ -5,8 +5,8 @@
   <p><strong>The official Python SDK for secure digital payments on the SofizPay platform.</strong></p>
 
   [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-  [![Python Version](https://img.shields.io/badge/Python-3.8%2B-blue.svg)](https://www.python.org/)
-  [![PyPI](https://img.shields.io/pypi/v/sofizpay-sdk-python.svg)](https://pypi.org/project/sofizpay-sdk-python/)
+  [![Python](https://img.shields.io/badge/Python-3.8%2B-blue.svg)](https://www.python.org/)
+  [![Docs](https://img.shields.io/badge/Docs-docs.sofizpay.com-blue)](https://docs.sofizpay.com)
 </div>
 
 ---
@@ -16,30 +16,23 @@
 - [Overview](#overview)
 - [Installation](#installation)
 - [Quick Start](#quick-start)
-- [Core Methods](#core-methods)
-- [API Reference](#api-reference)
+- [Stellar Payments (DZT)](#stellar-payments-dzt)
+- [CIB Bank Payments](#cib-bank-payments)
 - [Digital Services (Missions)](#digital-services-missions)
-- [Bank Integration (CIB)](#bank-integration-cib)
+- [Operation History](#operation-history)
 - [Real-time Transaction Streaming](#real-time-transaction-streaming)
 - [Webhook Signature Verification](#webhook-signature-verification)
 - [Response Format](#response-format)
 - [Security Best Practices](#security-best-practices)
-- [Use Cases](#use-cases)
 - [Support](#support)
 
 ---
 
 ## 🌟 Overview
 
-The SofizPay Python SDK provides a clean **async/await** interface for integrating **DZT digital payments** into Python applications, Django backends, FastAPI services, and data scripts. Built on top of the [Stellar Python SDK](https://github.com/StellarCN/py-stellar-base), it handles on-chain payments, exhaustive transaction history, CIB bank deposits, Mission service recharges, and webhook signature verification.
+The SofizPay Python SDK provides a complete `async` interface for integrating **DZT digital payments** into Python applications, Django backends, and FastAPI services.
 
-**Key Benefits:**
-- ⚡ Fully `async` API using `asyncio`
-- 📊 Exhaustive 24-transaction history (Path Payments, Trustlines, Account Creation)
-- 🔴 Real-time transaction streaming with configurable intervals
-- 🏦 CIB/Dahabia bank deposit links
-- 📱 Phone, Internet & Game recharges (Mission APIs)
-- 🔍 RSA-based webhook signature verification
+📚 **Full API Reference:** [docs.sofizpay.com](https://docs.sofizpay.com)
 
 ---
 
@@ -49,29 +42,22 @@ The SofizPay Python SDK provides a clean **async/await** interface for integrati
 pip install sofizpay-sdk-python
 ```
 
-**Requirements:**
-- Python `>= 3.8`
-- `stellar-sdk` (auto-installed)
-- `aiohttp` (auto-installed)
-- `cryptography` (for signature verification)
-
 ---
 
 ## 🚀 Quick Start
 
 ```python
-import asyncio
+import asyncio, os
 from sofizpay.client import SofizPayClient
 
 async def main():
     client = SofizPayClient()
 
-    # 1. Check DZT balance
+    # Check balance
     balance = await client.get_balance('YOUR_PUBLIC_KEY')
-    if balance.get('success'):
-        print(f"💰 Balance: {balance['balance']} DZT")
+    print(f"Balance: {balance['balance']} DZT")
 
-    # 2. Send a DZT payment
+    # Send payment
     result = await client.send_payment(
         source_secret='YOUR_SECRET_KEY',
         destination_public_key='RECIPIENT_PUBLIC_KEY',
@@ -80,245 +66,88 @@ async def main():
     )
 
     if result.get('success'):
-        print(f"✅ Payment sent! TX: {result['transactionHash']}")
-    else:
-        print(f"❌ Failed: {result.get('error')}")
+        print(f"✅ TX: {result['transactionHash']}")
 
 asyncio.run(main())
 ```
 
 ---
 
-## 🔧 Core Methods
+## ⭐ Stellar Payments (DZT)
 
 ### `get_balance(public_key)`
 
-Fetches the current **DZT** balance for a given Stellar account.
-
 ```python
 result = await client.get_balance('GCAZI...YOUR_PUBLIC_KEY')
-
-# Response
-{
-    'success':      True,
-    'balance':      '1500.0000000',
-    'publicKey':    'GCAZI...',
-    'asset_code':   'DZT',
-    'asset_issuer': 'GCAZI7YBLIDJWIVEL7ETNAZGPP3LC24NO6KAOBWZHUERXQ7M5BC52DLV',
-    'timestamp':    '2025-07-28T10:30:00.000Z'
-}
+# {'success': True, 'balance': '1500.0000000', 'asset_code': 'DZT', ...}
 ```
-
----
 
 ### `send_payment(source_secret, destination_public_key, amount, memo?)`
 
-Submits a DZT payment to the Stellar network.
-
 ```python
 result = await client.send_payment(
-    source_secret='SXXX...YOUR_SECRET_KEY',       # 56-char Stellar seed
-    destination_public_key='GXXX...RECIPIENT',    # Recipient's public key
-    amount='250.50',                               # Amount in DZT (string)
-    memo='Order #5567'                             # Optional memo (max 28 chars)
+    source_secret='SXXX...SECRET',           # 56-char Stellar seed
+    destination_public_key='GXXX...RECIPIENT',
+    amount='100',                             # DZT amount (as string)
+    memo='Order #5567'                        # Optional, max 28 chars
 )
-
-# Success Response
-{
-    'success':            True,
-    'transactionHash':    'abc123...hash',
-    'amount':             '250.50',
-    'memo':               'Order #5567',
-    'destinationPublicKey': 'GXXX...',
-    'timestamp':          '2025-07-28T10:30:00.000Z'
-}
+# {'success': True, 'transactionHash': '...', 'amount': '100', ...}
 ```
-
-> ⚠️ **Memo Truncation:** Memos longer than 28 characters are automatically truncated.
-
----
 
 ### `get_transactions(public_key, limit?)`
 
-Fetches **exhaustive transaction history** via the Stellar `/operations?join=transactions` endpoint. This is the reference implementation used to achieve **24-transaction parity** across all SDKs.
-
-```python
-history = await client.get_transactions('YOUR_PUBLIC_KEY', 100)
-
-for tx in history:
-    print(f"[{tx['created_at']}] {tx['type'].upper()} — {tx['amount']} {tx.get('asset_code', 'DZT')}")
-
-# Each transaction dictionary contains:
-# 'id'           → Transaction hash
-# 'hash'         → Transaction hash
-# 'type'         → 'sent' | 'received' | 'trustline' | 'account_created'
-# 'amount'       → Amount as string
-# 'from'         → Sender's public key
-# 'to'           → Recipient's public key
-# 'asset_code'   → 'DZT' or 'XLM'
-# 'memo'         → Memo text (if any)
-# 'created_at'   → ISO 8601 timestamp
-# 'successful'   → bool
-```
-
-**Captured transaction types:**
+Exhaustive history via Stellar `/operations?join=transactions`:
 
 | Type | Description |
 |------|-------------|
-| `sent` | DZT payment sent from this account |
-| `received` | DZT payment received by this account |
-| `trustline` | DZT trustline created (account activation) |
-| `account_created` | Account funded for the first time |
-
----
-
-### `get_public_key_from_secret(secret_key)`
-
-Derives the Stellar public key from a secret key. This is a **synchronous** method (no `await` needed).
+| `sent` | DZT sent from this account |
+| `received` | DZT received by this account |
+| `trustline` | DZT trustline setup event |
+| `account_created` | Account creation / initial funding |
 
 ```python
-public_key = client.get_public_key_from_secret('SXXX...YOUR_SECRET_KEY')
-print('Derived public key:', public_key)
+transactions = await client.get_transactions('YOUR_PUBLIC_KEY', 100)
+for tx in transactions:
+    print(f"[{tx['created_at']}] {tx['type']} — {tx['amount']} DZT")
 ```
 
----
-
-### `search_transactions_by_memo(public_key, memo, limit?)`
-
-Performs a case-insensitive substring search over recent transactions.
+### Search & Lookup
 
 ```python
-results = await client.search_transactions_by_memo(
-    'YOUR_PUBLIC_KEY', 'Order #12345', 10
-)
+# Derive public key (synchronous, no await)
+public_key = client.get_public_key_from_secret('SXXX...SECRET')
 
-for tx in results:
-    print(f"{tx['hash']} — {tx['memo']}")
-```
+# Search by memo
+results = await client.search_transactions_by_memo('YOUR_PUBLIC_KEY', 'Order #1234', 10)
 
----
-
-### `get_transaction_by_hash(hash)`
-
-Fetches a specific transaction by its hash.
-
-```python
+# Get by hash
 tx = await client.get_transaction_by_hash('abc123...hash')
-if tx.get('found'):
-    print('Amount:', tx['transaction']['amount'])
-else:
-    print('Transaction not found')
 ```
 
 ---
 
-## 📚 API Reference
+## 🏦 CIB Bank Payments
 
-### Full Method Table
+Initiates a CIB/Dahabia bank payment and redirects the customer to the secure gateway.
 
-| Method | Parameters | Returns | Description |
-|--------|-----------|---------|-------------|
-| `send_payment(...)` | `source_secret, destination_public_key, amount, memo?` | `dict` | Submit DZT payment |
-| `get_balance(public_key)` | `str` | `dict` | Get DZT balance |
-| `get_public_key_from_secret(secret_key)` | `str` | `str` | Derive public key from secret |
-| `get_transactions(public_key, limit?)` | `str, int` | `list[dict]` | Full transaction history |
-| `get_transaction_by_hash(hash)` | `str` | `dict` | Find specific transaction |
-| `search_transactions_by_memo(public_key, memo, limit?)` | `str, str, int` | `list[dict]` | Search by memo |
-| `setup_transaction_stream(...)` | See streaming section | `str` (stream_id) | Start real-time monitoring |
-| `stop_transaction_stream(stream_id)` | `str` | `None` | Stop monitoring |
-| `make_cib_transaction(data)` | See CIB section | `dict` | Create bank payment link |
-| `check_cib_status(order_number)` | `str` | `dict` | Check CIB order status |
-| `recharge_phone(data)` | `{encrypted_sk, phone, operator, amount, offer}` | `dict` | Phone recharge |
-| `recharge_internet(data)` | `{encrypted_sk, phone, amount, offer}` | `dict` | Internet recharge |
-| `recharge_game(data)` | `{encrypted_sk, game, player_id, amount}` | `dict` | Game top-up |
-| `pay_bill(data)` | `{encrypted_sk, ...}` | `dict` | Bill payment |
-| `get_products()` | — | `dict` | List available services |
-| `get_operation_history(enc_sk, limit, offset)` | `str, int, int` | `dict` | Mission operation history |
-| `get_operation_details(op_id, enc_sk)` | `str, str` | `dict` | Single operation details |
-| `verify_sofizpay_signature(data)` | `{message, signature_url_safe}` | `bool` | Validate RSA webhook |
+**Endpoint:** `GET https://www.sofizpay.com/make-cib-transaction/`
+**Sandbox:** `GET https://www.sofizpay.com/sandbox/make-cib-transaction/`
 
----
+### Parameters
 
-## 📱 Digital Services (Missions)
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `account` | `str` | ✅ | Your merchant Stellar public key |
+| `amount` | `int/float` | ✅ | Amount in Algerian Dinars (DZD) |
+| `full_name` | `str` | ✅ | Customer's full name as on card |
+| `phone` | `str` | ✅ | Customer's phone number |
+| `email` | `str` | ✅ | Customer's email for receipt |
+| `return_url` | `str` | ✅ | URL to redirect after payment |
+| `memo` | `str` | ✅ | Order reference (e.g. `"Order #1234"`) |
+| `redirect` | `str` | ✅ | `"yes"` → auto-redirect; `"no"` → returns URL in response |
+| `keep_return_url` | `bool` | ❌ | `True` → adds RSA signature to callback |
 
-Mission APIs let your users spend DZT on real-world digital services. All Mission calls require the user's `encrypted_sk` — **not** the raw secret key.
-
-### Phone Recharge
-
-```python
-result = await client.recharge_phone({
-    'encrypted_sk': 'USER_ENCRYPTED_SECRET_KEY',
-    'phone':        '0661000000',
-    'operator':     'Mobilis',  # 'Mobilis' | 'Djezzy' | 'Ooredoo'
-    'amount':       '100',
-    'offer':        'Top'       # Offer type from get_products()
-})
-
-if result.get('success'):
-    print('✅ Phone recharged!', result.get('data'))
-else:
-    print('❌ Recharge failed:', result.get('error'))
-```
-
-### Internet Recharge (Idoom 4G)
-
-```python
-result = await client.recharge_internet({
-    'encrypted_sk': 'USER_ENCRYPTED_SECRET_KEY',
-    'phone':        '0661000000',
-    'amount':       '200',
-    'offer':        'idoom_1gb'
-})
-```
-
-### Game Top-up (FreeFire, PUBG)
-
-```python
-result = await client.recharge_game({
-    'encrypted_sk': 'USER_ENCRYPTED_SECRET_KEY',
-    'game':         'freefire',
-    'player_id':    '123456789',
-    'amount':       '500'
-})
-```
-
-### Bill Payment
-
-```python
-result = await client.pay_bill({
-    'encrypted_sk': 'USER_ENCRYPTED_SECRET_KEY',
-    'bill_type':    'electricity',
-    'reference':    'REF123456',
-    'amount':       '1500'
-})
-```
-
-### Get Available Products
-
-```python
-products = await client.get_products()
-if products.get('success'):
-    for item in products['data']['products']:
-        print(f"{item['name']} — {item['price']} DZT")
-```
-
-### Operation History & Details
-
-```python
-# Last 10 operations
-history = await client.get_operation_history('USER_ENCRYPTED_SK', 10, 0)
-if history.get('success'):
-    print('Operations:', history.get('data'))
-
-# Single operation detail
-details = await client.get_operation_details('OPERATION_ID', 'USER_ENCRYPTED_SK')
-```
-
----
-
-## 🏦 Bank Integration (CIB)
-
-Generate a Dahabia/CIB bank payment link for customers.
+### Example — Get Payment URL (`redirect: "no"`)
 
 ```python
 result = await client.make_cib_transaction({
@@ -327,31 +156,138 @@ result = await client.make_cib_transaction({
     'full_name':  'Ahmed Benali',
     'phone':      '0661234567',
     'email':      'ahmed@example.com',
-    'memo':       'Order #789',                        # Optional
-    'return_url': 'https://yoursite.com/callback',     # Optional
-    'redirect':   True
+    'return_url': 'https://yoursite.com/payment/callback',
+    'memo':       'Order #789',
+    'redirect':   'no'    # Returns payment URL in response body
 })
 
 if result.get('success'):
     payment_url = result['data']['payment_url']
     print(f"Redirect customer to: {payment_url}")
-else:
-    print('CIB failed:', result.get('error'))
+```
+
+### Example — Auto-redirect (`redirect: "yes"`)
+
+```python
+result = await client.make_cib_transaction({
+    'account':         'YOUR_STELLAR_PUBLIC_KEY',
+    'amount':          1500,
+    'full_name':       'Youcef Amrani',
+    'phone':           '0770000000',
+    'email':           'youcef@example.com',
+    'return_url':      'https://yoursite.com/payment/callback',
+    'memo':            'Order #999',
+    'redirect':        'yes',   # Server sends HTTP 302 redirect
+    'keep_return_url': True     # Enables RSA-signed callbacks
+})
 ```
 
 ### Check CIB Status
 
+**Endpoint:** `GET https://www.sofizpay.com/cib-transaction-check/`
+
 ```python
-status = await client.check_cib_status('ORDER_NUMBER_FROM_CIB')
-if status.get('success'):
-    print('Status:', status['data']['status'])
+status = await client.check_cib_status('ORDER_NUMBER')
+print(status['data']['status'])  # 'success' | 'pending' | 'failed'
+```
+
+---
+
+## 📱 Digital Services (Missions)
+
+All services use `encrypted_sk` for authentication.
+
+**Endpoint:** `POST https://www.sofizpay.com/services/operation_post`
+
+### Phone Recharge
+
+**Operators:** `djezzy` · `ooredoo` · `mobilis`
+
+```python
+result = await client.recharge_phone({
+    'encrypted_sk': 'USER_ENCRYPTED_SK',
+    'phone':        '0661000000',
+    'operator':     'mobilis',   # 'djezzy' | 'ooredoo' | 'mobilis'
+    'amount':       '100',
+    'offer':        'prepaid'    # 'prepaid' | 'postpaid'
+})
+```
+
+### Internet Recharge
+
+**Operators:** `algerie-telecom` · `djezzy` · `ooredoo` · `mobilis`
+
+```python
+result = await client.recharge_internet({
+    'encrypted_sk': 'USER_ENCRYPTED_SK',
+    'phone':        '0661000000',
+    'operator':     'algerie-telecom',
+    'amount':       '200',
+    'offer':        'prepaid'
+})
+```
+
+### Game Top-up
+
+**Games:** `freefire` · `pubg`
+
+```python
+result = await client.recharge_game({
+    'encrypted_sk': 'USER_ENCRYPTED_SK',
+    'operator':     'freefire',   # 'freefire' | 'pubg'
+    'player_id':    '123456789',  # In-game Player ID
+    'amount':       '500'
+})
+```
+
+### Bill Payment
+
+**Providers:** `ade` (Water) · `sonelgaz` (Electricity) · `algerie-telecom`
+
+```python
+result = await client.pay_bill({
+    'encrypted_sk': 'USER_ENCRYPTED_SK',
+    'operator':     'sonelgaz',
+    'ref':          'BILL_REFERENCE',
+    'amount':       '1500'
+})
+```
+
+### Get Available Products
+
+**Endpoint:** `GET https://www.sofizpay.com/services/get_products`
+
+```python
+products = await client.get_products()
+if products.get('success'):
+    for p in products['data']['products']:
+        print(f"{p['name']} — {p['price']} DZT")
+```
+
+---
+
+## 📋 Operation History
+
+### Get History (paginated)
+
+**Endpoint:** `GET https://www.sofizpay.com/operation-history/`
+
+```python
+history = await client.get_operation_history('USER_ENCRYPTED_SK', 10, 0)
+# Parameters: encrypted_sk, limit, offset
+```
+
+### Get Operation Details
+
+**Endpoint:** `GET https://www.sofizpay.com/operation-details/{id}/`
+
+```python
+details = await client.get_operation_details('OPERATION_ID', 'USER_ENCRYPTED_SK')
 ```
 
 ---
 
 ## 🔴 Real-time Transaction Streaming
-
-Monitor an account for new transactions using periodic polling.
 
 ### `setup_transaction_stream(public_key, callback, from_now?, check_interval?)`
 
@@ -359,83 +295,46 @@ Monitor an account for new transactions using periodic polling.
 |-----------|------|---------|-------------|
 | `public_key` | `str` | required | Stellar account to monitor |
 | `callback` | `async function` | required | Called for each new transaction |
-| `from_now` | `bool` | `True` | `True`: only future txs; `False`: load history first |
-| `check_interval` | `int` | `30` | Polling interval in seconds (5–300) |
+| `from_now` | `bool` | `True` | `True`: new txs only; `False`: load history first |
+| `check_interval` | `int` | `30` | Polling interval in seconds |
 
 ```python
-import asyncio
-from sofizpay.client import SofizPayClient
-
-async def main():
-    client = SofizPayClient()
-
-    # Monitor only new transactions
-    async def on_new_tx(tx):
-        if tx.get('type') == 'received':
-            print(f"💸 Received {tx['amount']} DZT from {tx['from']}")
-
-    stream_id = await client.setup_transaction_stream(
-        'YOUR_PUBLIC_KEY',
-        on_new_tx,
-        from_now=True,
-        check_interval=15
-    )
-
-    # Keep running for 5 minutes
-    await asyncio.sleep(300)
-
-    # Stop the stream
-    client.stop_transaction_stream(stream_id)
-
-asyncio.run(main())
-```
-
-```python
-# Load history first, then monitor new transactions
 async def on_tx(tx):
-    if tx.get('isHistorical'):
-        print('Historical:', tx['hash'])
-    else:
-        print('New live transaction:', tx['hash'])
+    if tx.get('type') == 'received':
+        print(f"💸 Received {tx['amount']} DZT from {tx['from']}")
 
 stream_id = await client.setup_transaction_stream(
-    'YOUR_PUBLIC_KEY',
-    on_tx,
-    from_now=False,    # Load history first
-    check_interval=30
+    'YOUR_PUBLIC_KEY', on_tx, from_now=True, check_interval=15
 )
+
+await asyncio.sleep(300)   # Monitor for 5 minutes
+client.stop_transaction_stream(stream_id)
 ```
 
 ---
 
 ## 🔒 Webhook Signature Verification
 
-SofizPay signs all webhook payloads with RSA-SHA256. Always verify signatures before processing payment events.
+When `keep_return_url: True` is set in a CIB transaction, SofizPay appends an RSA-SHA256 signature to the `return_url` callback. Always verify before processing.
 
 ```python
-from sofizpay.client import SofizPayClient
-
-client = SofizPayClient()
-
-# FastAPI webhook handler example
+# FastAPI example
 from fastapi import FastAPI, Request, HTTPException
-
 app = FastAPI()
 
-@app.post('/webhook/sofizpay')
-async def sofizpay_webhook(request: Request):
-    payload = await request.json()
+@app.get('/payment/callback')
+async def payment_callback(request: Request):
+    params = dict(request.query_params)
 
     is_valid = client.verify_sofizpay_signature({
-        'message':            payload.get('message'),
-        'signature_url_safe': payload.get('signature_url_safe')
+        'message':            params.get('message'),
+        'signature_url_safe': params.get('signature_url_safe')
     })
 
     if not is_valid:
         raise HTTPException(status_code=400, detail='Invalid signature')
 
-    # ✅ Process the verified payment event
-    print('Confirmed payment event:', payload.get('message'))
+    # ✅ Process the confirmed payment
     return {'status': 'received'}
 ```
 
@@ -443,126 +342,34 @@ async def sofizpay_webhook(request: Request):
 
 ## 📤 Response Format
 
-Most methods return a dictionary with a `success` key:
-
 ```python
 # ✅ Success
-{
-    'success':   True,
-    # ... method-specific fields
-    'timestamp': '2025-07-28T10:30:00.000Z'
-}
+{'success': True, 'data': {...}, 'timestamp': '...'}
 
 # ❌ Failure
-{
-    'success':   False,
-    'error':     'Human-readable error description',
-    'timestamp': '2025-07-28T10:30:00.000Z'
-}
+{'success': False, 'error': 'Message', 'timestamp': '...'}
 ```
 
-> Note: `get_transactions()` and `search_transactions_by_memo()` return a list directly. Check for an empty list as the failure case.
-
-Always guard with:
-
-```python
-result = await client.get_balance('GXXX...')
-if result.get('success'):
-    print(result['balance'])
-else:
-    print('Error:', result.get('error'))
-```
+> Note: `get_transactions()` returns a list directly. Check for empty list as the error case.
 
 ---
 
 ## 🛡️ Security Best Practices
 
-| Rule | Why |
-|------|-----|
-| ❌ Never hardcode secret keys | Source code is often committed to version control |
-| ✅ Use environment variables | `os.getenv('SOFIZPAY_SECRET')` |
-| ✅ Verify webhook signatures | Prevent forged payment events |
-| ✅ Use `encrypted_sk` for Missions | Protects the underlying secret key |
-| ✅ Run on backend only | Never expose secret keys to clients |
-
-```python
-import os
-from sofizpay.client import SofizPayClient
-
-client = SofizPayClient()
-
-# ✅ Correct
-result = await client.send_payment(
-    source_secret=os.getenv('SOFIZPAY_SECRET_KEY'),
-    destination_public_key='GXXX...',
-    amount='100'
-)
-
-# ❌ Never do this
-result = await client.send_payment(
-    source_secret='SXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
-    ...
-)
-```
-
----
-
-## 💡 Use Cases
-
-### Django Payment View
-
-```python
-import os
-import asyncio
-from django.http import JsonResponse
-from sofizpay.client import SofizPayClient
-
-client = SofizPayClient()
-
-def process_payment(request):
-    order_id = request.POST.get('order_id')
-    recipient = request.POST.get('recipient_key')
-    amount = request.POST.get('amount')
-
-    result = asyncio.run(client.send_payment(
-        source_secret=os.getenv('SOFIZPAY_SECRET_KEY'),
-        destination_public_key=recipient,
-        amount=amount,
-        memo=f'Order #{order_id}'
-    ))
-
-    if result.get('success'):
-        return JsonResponse({'status': 'paid', 'hash': result['transactionHash']})
-    else:
-        return JsonResponse({'status': 'failed', 'error': result.get('error')}, status=400)
-```
-
-### Batch Payment Processing
-
-```python
-async def batch_pay(payments: list):
-    results = await asyncio.gather(*[
-        client.send_payment(**p) for p in payments
-    ])
-    success = sum(1 for r in results if r.get('success'))
-    print(f"✅ {success}/{len(results)} payments succeeded")
-```
+- ❌ Never hardcode secret keys in source files
+- ✅ Use `os.getenv('SOFIZPAY_SECRET')` 
+- ✅ Always call `verify_sofizpay_signature()` on CIB callbacks
+- ✅ Use `encrypted_sk` for all Mission API calls (never the raw secret)
+- ✅ Run payment logic on backend only — never expose keys to clients
 
 ---
 
 ## 📞 Support
 
 - 🌐 **Website**: [SofizPay.com](https://sofizpay.com)
-- 📚 **Full Docs**: [GitHub Repository](https://github.com/kenandarabeh/sofizpay-sdk-python#readme)
-- 🐛 **Bug Reports**: [Open an Issue](https://github.com/kenandarabeh/sofizpay-sdk-python/issues)
-- 💬 **Discussions**: [Community Forum](https://github.com/kenandarabeh/sofizpay-sdk-python/discussions)
+- 📚 **Official Docs**: [docs.sofizpay.com](https://docs.sofizpay.com)
+- 🐛 **Issues**: [GitHub Issues](https://github.com/kenandarabeh/sofizpay-sdk-python/issues)
 
 ---
 
-## License
-
-MIT © [SofizPay Team](https://github.com/kenandarabeh)
-
----
-
-**Built with ❤️ for Python & Django developers | Version `1.1.0`**
+MIT © [SofizPay Team](https://github.com/kenandarabeh) | **Version `1.1.0`**
