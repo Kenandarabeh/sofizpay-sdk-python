@@ -615,7 +615,7 @@ THV3WRcKrP2krz3ruRGF6yP6PVHEuPc0YDLsYjV5uhfs7JtIksNKhRRAQ16bAsj/
         """Get details of a specific operation"""
         try:
             response = requests.get(
-                f'https://www.sofizpay.com/operation-details/{operation_id}/',
+                f'https://sofizpay.com/services/operation-detail/{operation_id}/',
                 params={'encrypted_sk': encrypted_sk},
                 timeout=30
             )
