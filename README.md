@@ -60,6 +60,7 @@ import asyncio, os
 from sofizpay.client import SofizPayClient
 
 async def main():
+    # Initialize the async client
     client = SofizPayClient()
 
     # 1. Check DZT balance
@@ -69,10 +70,10 @@ async def main():
 
     # 2. Send a DZT payment
     result = await client.send_payment(
-        source_secret='YOUR_SECRET_KEY',
-        destination_public_key='RECIPIENT_PUBLIC_KEY',
-        amount='100',
-        memo='Invoice #1234'
+        source_secret='YOUR_SECRET_KEY',           # 56-char Stellar seed starting with 'S'
+        destination_public_key='RECIPIENT_PUBLIC_KEY', # Recipient's public key
+        amount='100',                                  # Amount as string
+        memo='Invoice #1234'                           # Optional memo (max 28 chars)
     )
 
     if result.get('success'):
@@ -81,6 +82,7 @@ async def main():
         print(f"❌ Error: {result.get('error')}")
 
 if __name__ == "__main__":
+    # Run the async main function
     asyncio.run(main())
 ```
 
@@ -93,6 +95,7 @@ if __name__ == "__main__":
 Returns the current **DZT** balance for a given Stellar account.
 
 ```python
+# Fetch balance for a specific public key
 result = await client.get_balance('GCAZI...YOUR_PUBLIC_KEY')
 
 # Response
@@ -114,10 +117,10 @@ Submits a DZT payment to the Stellar network.
 
 ```python
 result = await client.send_payment(
-    source_secret='SXXX...YOUR_SECRET',           # 56-char Stellar seed
-    destination_public_key='GXXX...RECIPIENT',
+    source_secret='SXXX...YOUR_SECRET',           # 56-char Stellar seed starting with 'S'
+    destination_public_key='GXXX...RECIPIENT',    # Recipient's public key
     amount='250.50',                              # Amount in DZT
-    memo='Order #5567'                            # Optional, max 28 chars
+    memo='Order #5567'                            # Optional memo (max 28 chars)
 )
 
 # Success Response
@@ -141,9 +144,11 @@ result = await client.send_payment(
 Fetches **exhaustive transaction history** via Stellar. Includes payments, trustlines, and account creation.
 
 ```python
+# Fetch up to 100 recent transactions
 transactions = await client.get_transactions('YOUR_PUBLIC_KEY', 100)
 
 for tx in transactions:
+    # Print details for each captured operation
     print(f"[{tx['created_at']}] {tx['type']} — {tx['amount']} DZT")
 ```
 
@@ -154,6 +159,7 @@ for tx in transactions:
 Performs a case-insensitive search over recent transactions.
 
 ```python
+# Perform case-insensitive search over user's recent transactions
 results = await client.search_transactions_by_memo('YOUR_PUBLIC_KEY', 'Order #1234', 10)
 if results['success']:
     print(f"Found {results['totalFound']} matches")
@@ -169,14 +175,15 @@ Mission APIs allow users to spend DZT on real-world digital services. All calls 
 
 ```python
 result = await client.recharge_phone({
-    'encrypted_sk': 'USER_ENCRYPTED_SECRET_KEY',
-    'phone':        '0661000000',
-    'operator':     'mobilis',   # 'mobilis' | 'djezzy' | 'ooredoo'
-    'amount':       '100',
-    'offer':        'Top'        # e.g., 'Top', 'Pix'
+    'encrypted_sk': 'USER_ENCRYPTED_SECRET_KEY', # User's encrypted secret key
+    'phone':        '0661000000',               # Recipient's phone number
+    'operator':     'mobilis',                  # 'mobilis' | 'djezzy' | 'ooredoo'
+    'amount':       '100',                      # Recharge amount
+    'offer':        'Top'                       # Offer type (e.g., 'Top', 'Pix')
 })
 
 if result['success']:
+    # Process successful recharge response
     print('✅ Phone recharged:', result['data'])
 ```
 
@@ -184,11 +191,11 @@ if result['success']:
 
 ```python
 result = await client.recharge_internet({
-    'encrypted_sk': 'USER_ENCRYPTED_SECRET_KEY',
-    'phone':        '0661000000',
-    'operator':     'algerie-telecom',
-    'amount':       '2000',
-    'offer':        'prepaid'
+    'encrypted_sk': 'USER_ENCRYPTED_SECRET_KEY', # User's encrypted secret key
+    'phone':        '0661000000',               # Account phone number
+    'operator':     'algerie-telecom',           # Network provider
+    'amount':       '2000',                     # Recharge amount
+    'offer':        'prepaid'                    # Offer type (e.g., 'prepaid', 'postpaid')
 })
 ```
 
@@ -196,19 +203,21 @@ result = await client.recharge_internet({
 
 ```python
 result = await client.recharge_game({
-    'encrypted_sk': 'USER_ENCRYPTED_SECRET_KEY',
-    'operator':     'freefire',
-    'player_id':    '123456789',
-    'amount':       '500', 
-    'offer':        'diamonds'
+    'encrypted_sk': 'USER_ENCRYPTED_SECRET_KEY', # User's encrypted secret key
+    'operator':     'freefire',                 # Game operator
+    'player_id':    '123456789',                # Player's unique ID
+    'amount':       '500',                      # Top-up amount
+    'offer':        'diamonds'                  # Product name (e.g., 'diamonds', 'uc')
 })
 ```
 
 ### Get Available Products
 
 ```python
+# Fetch available charging services and products
 products = await client.get_products()
 if products.get('success'):
+    # Iterate through available products to find names and amounts
     print('Available services:', products['data'])
 ```
 
@@ -223,17 +232,18 @@ Generate secure Dahabia/CIB bank payment links.
 
 ```python
 result = await client.make_cib_transaction({
-    'account':    'YOUR_STELLAR_PUBLIC_KEY',
-    'amount':     2500,                         # DZD (Algerian Dinars)
-    'full_name':  'Ahmed Benali',
-    'phone':      '0661234567',
-    'email':      'ahmed@example.com',
-    'memo':       'Order #789',
-    'return_url': 'https://yoursite.com/callback',
+    'account':    'YOUR_STELLAR_PUBLIC_KEY',    # Your merchant Stellar public key
+    'amount':     2500,                         # Amount in DZD (Algerian Dinars)
+    'full_name':  'Ahmed Benali',               # Customer's full name
+    'phone':      '0661234567',                 # Customer's phone number
+    'email':      'ahmed@example.com',           # Customer's email
+    'memo':       'Order #789',                 # Internal order reference
+    'return_url': 'https://yoursite.com/callback', # Redirect after payment
     'redirect':   'no'                          # 'yes' for auto-redirect
 })
 
 if result.get('success'):
+    # Get total generated hosted payment URL
     payment_url = result['data']['payment_url']
     print(f"Redirect customer to: {payment_url}")
 ```
@@ -241,8 +251,10 @@ if result.get('success'):
 ### Check CIB Status
 
 ```python
+# Monitor progress of a CIB transaction using its ID
 status = await client.check_cib_status('CIB_TRANSACTION_ID')
 if status['success']:
+    # Current transaction status (e.g., 'success', 'pending', 'failed')
     print(f"Status: {status['data']['status']}")
 ```
 
