@@ -258,6 +258,34 @@ if status['success']:
     print(f"Status: {status['data']['status']}")
 ```
 
+### 💡 Best Practice: Secure Order Flow
+
+For maximum security, never expose the `cib_transaction_id` (order_number) to the end-user. Always store it in your database and verify the status server-side.
+
+```python
+# 1. Initiate transaction and store the ID invisibly
+result = await client.make_cib_transaction({
+    'account': 'YOUR_PUBLIC_KEY',
+    'amount': 5000,
+    'memo': 'Order #9988'
+})
+
+if result['success']:
+    cib_id = result['data']['cib_transaction_id']
+    # ✅ SAVE to database: UPDATE orders SET cib_id = '{cib_id}' WHERE id = 9988;
+    
+    # Send user to payment_url
+    print(f"Redirecting user to {result['data']['payment_url']}")
+
+# 2. Later, when checking status, fetch from database
+order = await db.fetch_one("SELECT * FROM orders WHERE id=9988")
+status = await client.check_cib_status(order['cib_id'])
+
+if status['success'] and status['data']['status'] == 'success':
+    # ✅ Update order to PAID state in your database
+    await db.execute("UPDATE orders SET status='paid' WHERE id=9988")
+```
+
 ---
 
 ## 🔴 Real-time Transaction Streaming
