@@ -203,11 +203,11 @@ result = await client.recharge_internet({
 
 ```python
 result = await client.recharge_game({
-    'encrypted_sk': 'USER_ENCRYPTED_SECRET_KEY', # User's encrypted secret key
-    'operator':     'freefire',                 # Game operator
-    'player_id':    '123456789',                # Player's unique ID
-    'amount':       '500',                      # Top-up amount
-    'offer':        'diamonds'                  # Product name (e.g., 'diamonds', 'uc')
+    'encrypted_sk': 'USER_ENCRYPTED_SECRET_KEY',
+    'operator':     'freefire',   # e.g., 'freefire', 'pubg'
+    'playerId':     '123456789',
+    'amount':       '500',        # 'amount' from getProducts()
+    'offer':        'diamonds'    # 'name' from getProducts()
 })
 ```
 
