@@ -211,6 +211,43 @@ result = await client.recharge_game({
 })
 ```
 
+### Bill Payment
+
+```python
+result = await client.pay_bill({
+    'encrypted_sk': 'USER_ENCRYPTED_SECRET_KEY',
+    'operator':     'sonelgaz', # e.g., 'sonelgaz', 'ade'
+    'bill_id':      'BILL_999',
+    'amount':       '1500'
+})
+```
+
+### Get Available Products
+
+Fetches the list of available services, operators, and their associated offers (products).
+
+```python
+products = await client.get_products()
+if products['success']:
+    # Use products['data'] to populate Missions 'offer' and 'amount'
+    print('Available services:', products['data'])
+```
+
+> [!TIP]
+> Each product in the `data` array usually contains `name` and `amount`. When calling recharge methods, use the product's `name` for the `offer` field and the product's `amount` for the `amount` field.
+
+### Operation History & Details
+
+```python
+# Recent operations (paginated)
+history = await client.get_operation_history('USER_ENCRYPTED_SK', limit=10, offset=0)
+if history['success']:
+    print('Last 10 operations:', history['data'])
+
+# Details of a specific operation
+details = await client.get_operation_details('OPERATION_ID', 'USER_ENCRYPTED_SK')
+```
+
 ### Get Available Products
 
 ```python
