@@ -285,10 +285,33 @@ if result.get('success'):
     print(f"Redirect customer to: {payment_url}")
 ```
 
-### Check CIB Status
+### 🧪 Sandbox Environment
+
+For safe testing without real money, use the dedicated sandbox methods. These methods always point to the SofizPay Sandbox environment.
 
 ```python
-# Monitor progress of a CIB transaction using its ID
+# 1. Generate a sandbox payment link
+result = await client.make_sandbox_cib_transaction({
+    'account':   'YOUR_PUBLIC_KEY',
+    'amount':    150.0,
+    'full_name': 'Sandbox Tester',
+    'phone':     '0555000000',
+    'email':     'sandbox@example.com'
+})
+
+if result.get('success'):
+    print(f"Sandbox URL: {result['data']['payment_url']}")
+    cib_id = result['data']['cib_transaction_id']
+
+    # 2. Check sandbox status
+    status = await client.check_sandbox_cib_status(cib_id)
+    print(f"Sandbox Status: {status['data']['status']}")
+```
+
+### Check CIB Status (Production)
+
+```python
+# Monitor progress of a real CIB transaction using its ID
 status = await client.check_cib_status('CIB_TRANSACTION_ID')
 if status['success']:
     # Current transaction status (e.g., 'success', 'pending', 'failed')

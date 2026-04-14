@@ -35,14 +35,16 @@ THV3WRcKrP2krz3ruRGF6yP6PVHEuPc0YDLsYjV5uhfs7JtIksNKhRRAQ16bAsj/
 9wIDAQAB
 -----END PUBLIC KEY-----"""
     
-    def __init__(self, server_url: str = "https://horizon.stellar.org"):
+    def __init__(self, server_url: str = "https://horizon.stellar.org", sandbox: bool = False):
         """
         Initialize SofizPay client
         
         Args:
             server_url: Stellar Horizon server URL (defaults to mainnet)
+            sandbox: Enable sandbox mode for CIB transactions (defaults to False)
         """
         self.server_url = server_url
+        self.sandbox = sandbox
         self.payment_manager = PaymentManager(server_url)
         self.transaction_manager = TransactionManager(server_url)
     
@@ -358,43 +360,14 @@ THV3WRcKrP2krz3ruRGF6yP6PVHEuPc0YDLsYjV5uhfs7JtIksNKhRRAQ16bAsj/
             return False
     
     async def make_cib_transaction(self, transaction_data: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Make a CIB transaction through SofizPay
-        
-        Args:
-            transaction_data: Dictionary containing transaction details:
-                - account (str): Required. Account identifier
-                - amount (float): Required. Transaction amount (must be > 0)
-                - full_name (str): Required. Customer full name
-                - phone (str): Required. Customer phone number
-                - email (str): Required. Customer email address
-                - return_url (str, optional): URL to redirect after transaction
-                - memo (str, optional): Optional memo for the transaction
-                - redirect (bool, optional): Whether to redirect (defaults to False)
-                
-        Returns:
-            Dictionary with transaction result
-            
-        Raises:
-            ValidationError: When required fields are missing or invalid
-            NetworkError: When request fails
-            
-        Example:
-            ```python
-            client = SofizPayClient()
-            result = await client.make_cib_transaction({
-                "account": "ACCOUNT_ID_HERE",
-                "amount": 100.50,
-                "full_name": "CLIENT",
-                "phone": "+213123456789",
-                "email": "CLIENT@example.com",
-                "memo": "Payment for services",
-                "return_url": "https://mysite.com/success"
-            })
-            
-            if result['success']:
-            ```
-        """
+        """Initiate a CIB transaction (Production only)"""
+        return await self._make_cib_request(transaction_data, False)
+
+    async def make_sandbox_cib_transaction(self, transaction_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Initiate a CIB transaction specifically in Sandbox mode"""
+        return await self._make_cib_request(transaction_data, True)
+
+    async def _make_cib_request(self, transaction_data: Dict[str, Any], use_sandbox: bool) -> Dict[str, Any]:
         if not transaction_data.get('account'):
             raise ValidationError('Account is required')
         
@@ -411,7 +384,11 @@ THV3WRcKrP2krz3ruRGF6yP6PVHEuPc0YDLsYjV5uhfs7JtIksNKhRRAQ16bAsj/
             raise ValidationError('Email is required')
         
         try:
-            base_url = 'https://www.sofizpay.com/make-cib-transaction/'
+            base_url = (
+                'https://sofizpay.com/sandbox/make-cib-transaction/'
+                if use_sandbox
+                else 'https://www.sofizpay.com/make-cib-transaction/'
+            )
             
             query_params = []
             query_params.append(f"account={urllib.parse.quote(str(transaction_data['account']))}")
@@ -663,10 +640,23 @@ THV3WRcKrP2krz3ruRGF6yP6PVHEuPc0YDLsYjV5uhfs7JtIksNKhRRAQ16bAsj/
             return {'success': False, 'error': str(e), 'timestamp': datetime.now().isoformat()}
 
     async def check_cib_status(self, cib_transaction_id: str) -> Dict[str, Any]:
-        """Check status of a CIB transaction (Sandbox/Prod)"""
+        """Check status of a CIB transaction (Production only)"""
+        return await self._check_cib_status_request(cib_transaction_id, False)
+
+    async def check_sandbox_cib_status(self, cib_transaction_id: str) -> Dict[str, Any]:
+        """Check status of a CIB transaction specifically in Sandbox mode"""
+        return await self._check_cib_status_request(cib_transaction_id, True)
+
+    async def _check_cib_status_request(self, cib_transaction_id: str, use_sandbox: bool) -> Dict[str, Any]:
+        """Internal helper for checking CIB status"""
         try:
+            base_url = (
+                'https://sofizpay.com/sandbox/cib-transaction-check/'
+                if use_sandbox
+                else 'https://www.sofizpay.com/cib-transaction-check/'
+            )
             response = requests.get(
-                'https://www.sofizpay.com/cib-transaction-check/',
+                base_url,
                 params={'order_number': cib_transaction_id},
                 timeout=30
             )
